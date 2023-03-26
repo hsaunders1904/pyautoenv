@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "auto-pyenv"
+version = "0.1.0"
+description = "Activate a python environment if it exists in the given directory."
+authors = ["Harry Saunders <33317174+hsaunders1904@users.noreply.github.com>"]
+license = "GPL-3"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.1.0"
+ruff = "^0.0.259"
+pytest = "^7.2.2"
+pyfakefs = "^5.1.0"
+pytest-cov = "^4.0.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
