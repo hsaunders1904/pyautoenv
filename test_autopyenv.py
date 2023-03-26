@@ -197,9 +197,10 @@ class TestPoetry:
             == "deactivate && source virtualenvs/pyproj2-Y-py3.8/bin/activate"
         )
 
-    def test_nothing_happens_given_poetry_not_on_path(self, fs):
+    def test_nothing_happens_given_poetry_path_cannot_be_found(self, fs):
         stdout = StringIO()
         fs = make_poetry_fs_structure(fs)
+        # cannot find the poetry environment directory
         self.env_path_mock.return_value = None
 
         assert aenv.main(["python_project"], stdout) == 0
