@@ -134,4 +134,4 @@ def poetry_env_path(directory: Path) -> Union[Path, None]:
 if __name__ == "__main__":
     import sys
 
-    main(sys.argv[1:], sys.stdout)
+    sys.exit(main(sys.argv[1:], sys.stdout))
