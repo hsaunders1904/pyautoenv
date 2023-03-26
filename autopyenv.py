@@ -42,8 +42,7 @@ def main(sys_args: List[str], stdout: TextIO) -> int:
     if active_env_path := os.environ.get("VIRTUAL_ENV", None):
         if not new_env:
             stdout.write("deactivate")
-            return 0
-        if not new_env.directory.samefile(active_env_path):
+        elif not new_env.directory.samefile(active_env_path):
             stdout.write("deactivate")
             if activate := env_activate_path(new_env):
                 stdout.write(f" && source {activate}")
