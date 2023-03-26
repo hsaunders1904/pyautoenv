@@ -20,19 +20,19 @@ def test_parse_args_directory_is_set():
     assert args.directory == Path("/some/dir")
 
 
-def make_venv_fs_structure(fs: FakeFilesystem) -> FakeFilesystem:
-    fs.create_dir("python_project/src")
-    fs.create_file("python_project/.venv/bin/activate")
-    fs.create_dir("not_a_venv")
-    return fs
-
-
 def test_main_does_nothing_given_directory_does_not_exist():
     stdout = StringIO()
 
     assert aenv.main(["/not/a/dir"], stdout) == 1
     stdout.seek(0)
     assert stdout.read() == ""
+
+
+def make_venv_fs_structure(fs: FakeFilesystem) -> FakeFilesystem:
+    fs.create_dir("python_project/src")
+    fs.create_file("python_project/.venv/bin/activate")
+    fs.create_dir("not_a_venv")
+    return fs
 
 
 class TestVenv:
@@ -46,7 +46,7 @@ class TestVenv:
         assert aenv.main(["python_project"], stdout) == 0
         stdout.seek(0)
         expected_path = Path("python_project") / ".venv" / "bin" / "activate"
-        assert Path(stdout.read().strip()).samefile(expected_path)
+        assert stdout.read() == f"source {expected_path}"
 
     def test_activates_if_venv_in_parent(self, fs: FakeFilesystem):
         stdout = StringIO()
@@ -55,7 +55,7 @@ class TestVenv:
         assert aenv.main(["python_project/src"], stdout) == 0
         stdout.seek(0)
         expected_path = Path("python_project") / ".venv" / "bin" / "activate"
-        assert Path(stdout.read().strip()).samefile(expected_path)
+        assert stdout.read() == f"source {expected_path}"
 
     def test_nothing_happens_given_venv_dir_is_already_activate(self, fs):
         stdout = StringIO()
@@ -81,7 +81,7 @@ class TestVenv:
 
         assert aenv.main(["not_a_venv"], stdout) == 0
         stdout.seek(0)
-        assert stdout.read() == "deactivate\n"
+        assert stdout.read() == "deactivate"
 
     def test_deactivate_and_activate_switching_to_new_venv(self, fs):
         stdout = StringIO()
@@ -91,7 +91,20 @@ class TestVenv:
 
         assert aenv.main(["pyproj2"], stdout=stdout) == 0
         stdout.seek(0)
-        assert stdout.read() == "deactivate && pyproj2/.venv/bin/activate\n"
+        assert stdout.read() == "deactivate && source pyproj2/.venv/bin/activate"
+
+    @mock.patch("autopyenv.poetry_env_path")
+    def test_deactivate_and_activate_switching_to_poetry(self, poetry_env_mock, fs):
+        poetry_env_mock.return_value = Path("poetry_proj-X-py3.8")
+        stdout = StringIO()
+        fs = make_venv_fs_structure(fs)
+        fs.create_file("poetry_proj/poetry.lock")
+        fs.create_dir(poetry_env_mock.return_value)
+        os.environ["VIRTUAL_ENV"] = "/python_project"
+
+        assert aenv.main(["poetry_proj"], stdout) == 0
+        stdout.seek(0)
+        assert stdout.read() == "deactivate && source poetry_proj-X-py3.8/bin/activate"
 
 
 def make_poetry_fs_structure(fs: FakeFilesystem) -> FakeFilesystem:
@@ -106,14 +119,10 @@ class TestPoetry:
     def setup_class(cls):
         cls.env_path_patch = mock.patch("autopyenv.poetry_env_path")
         cls.env_path_mock = cls.env_path_patch.start()
-        cls.which_patch = mock.patch(
-            "autopyenv.shutil.which", new=lambda p: p == "poetry"
-        )
-        cls.which_mock = cls.which_patch.start()
 
     def teardown_class(cls):
         cls.env_path_patch.stop()
-        cls.which_patch.stop()
+        # cls.which_patch.stop()
 
     def setup_method(self):
         os.environ = {"PATH": "/bin"}
@@ -130,7 +139,7 @@ class TestPoetry:
         assert aenv.main(["python_project"], stdout) == 0
         stdout.seek(0)
         expected_path = venv_path / "bin" / "activate"
-        assert stdout.read().strip() == str(expected_path)
+        assert stdout.read() == f"source {expected_path}"
 
     def test_activates_given_poetry_dir_in_parent(self, fs):
         stdout = StringIO()
@@ -141,7 +150,7 @@ class TestPoetry:
         assert aenv.main(["python_project/src"], stdout) == 0
         stdout.seek(0)
         expected_path = venv_path / "bin" / "activate"
-        assert stdout.read().strip() == str(expected_path)
+        assert stdout.read() == f"source {expected_path}"
 
     def test_nothing_happens_given_not_venv_dir_and_not_activate(self, fs):
         stdout = StringIO()
@@ -169,7 +178,7 @@ class TestPoetry:
 
         assert aenv.main(["not_a_poetry_project"], stdout) == 0
         stdout.seek(0)
-        assert stdout.read() == "deactivate\n"
+        assert stdout.read() == "deactivate"
 
     def test_deactivate_and_activate_switching_to_new_poetry_env(self, fs):
         stdout = StringIO()
@@ -184,14 +193,15 @@ class TestPoetry:
         assert aenv.main(["pyproj2"], stdout=stdout) == 0
         stdout.seek(0)
         assert (
-            stdout.read() == "deactivate && virtualenvs/pyproj2-Y-py3.8/bin/activate\n"
+            stdout.read()
+            == "deactivate && source virtualenvs/pyproj2-Y-py3.8/bin/activate"
         )
 
     def test_nothing_happens_given_poetry_not_on_path(self, fs):
         stdout = StringIO()
         fs = make_poetry_fs_structure(fs)
+        self.env_path_mock.return_value = None
 
-        with mock.patch("autopyenv.shutil.which", new=lambda p: p != "poetry"):
-            assert aenv.main(["python_project"], stdout) == 0
+        assert aenv.main(["python_project"], stdout) == 0
         stdout.seek(0)
         assert stdout.read() == ""

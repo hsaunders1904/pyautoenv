@@ -4,7 +4,6 @@
 import argparse
 import enum
 import os
-import shutil
 import subprocess
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -21,10 +20,10 @@ class CliArgs:
 
 
 class EnvType(enum.Enum):
-    """The types of virtual environments."""
+    """Types of virtual environments."""
 
-    VENV = enum.auto()
     POETRY = enum.auto()
+    VENV = enum.auto()
 
 
 @dataclass
@@ -40,25 +39,17 @@ def main(sys_args: Sequence[str], stdout: TextIO) -> int:
     args = parse_args(sys_args)
     if not args.directory.is_dir():
         return 1
-    if env := discover_env(args.directory):
-        if env.env_type == EnvType.VENV:
-            if active_venv := os.environ.get("VIRTUAL_ENV", ""):
-                if not Path(active_venv).samefile(env.directory):
-                    print(f"deactivate && {activate_venv(env.directory)}", file=stdout)
-            else:
-                print(activate_venv(env.directory), file=stdout)
-        if env.env_type == EnvType.POETRY:
-            if not shutil.which("poetry"):
-                return 0
-            if active_venv := os.environ.get("VIRTUAL_ENV", ""):
-                if not Path(active_venv).samefile(poetry_env_path(args.directory)):
-                    print(
-                        f"deactivate && {activate_poetry(env.directory)}", file=stdout
-                    )
-            else:
-                print(activate_poetry(env.directory), file=stdout)
-    elif os.environ.get("VIRTUAL_ENV", None):
-        print("deactivate", file=stdout)
+    new_env = discover_env(args.directory)
+    if active_env_path := os.environ.get("VIRTUAL_ENV", None):
+        if not new_env:
+            stdout.write("deactivate")
+            return 0
+        if not new_env.directory.samefile(active_env_path):
+            stdout.write("deactivate")
+            if activate := env_activate_path(new_env):
+                stdout.write(f" && source {activate}")
+    elif new_env and (activate := env_activate_path(new_env)):
+        stdout.write(f"source {activate}")
     return 0
 
 
@@ -79,18 +70,18 @@ def parse_args(sys_args: Sequence[str]) -> CliArgs:
 def discover_env(directory: Path) -> Env | None:
     """Find an environment in the given directory, or any of its parents."""
     while directory != directory.parent:
-        if env_type := check_env(directory):
-            return Env(directory=directory, env_type=env_type)
+        if env := check_env(directory):
+            return env
         directory = directory.parent
     return None
 
 
-def check_env(directory: Path) -> EnvType | None:
+def check_env(directory: Path) -> Union[Env, None]:
     """Return true if an environment exists in the given directory."""
     if check_venv(directory):
-        return EnvType.VENV
-    if check_poetry(directory):
-        return EnvType.POETRY
+        return Env(directory=directory, env_type=EnvType.VENV)
+    if check_poetry(directory) and (env_path := poetry_env_path(directory)):
+        return Env(directory=env_path, env_type=EnvType.POETRY)
     return None
 
 
@@ -100,10 +91,13 @@ def check_venv(directory: Path) -> bool:
     return candidate_path.is_file()
 
 
-def activate_venv(directory: Path) -> int:
-    """Activate the venv in the given directory."""
-    path = venv_path(directory)
-    return str(path)
+def env_activate_path(env: Env) -> Union[Path, None]:
+    """Get the path to the activation script for the environment."""
+    if env.env_type == EnvType.POETRY:
+        return env.directory / "bin" / "activate"
+    if env.env_type == EnvType.VENV:
+        return venv_path(env.directory)
+    return None
 
 
 def venv_path(directory: Path) -> Path:
@@ -112,30 +106,29 @@ def venv_path(directory: Path) -> Path:
 
 
 def check_poetry(directory: Path) -> bool:
-    """Return true if the a poetry env exists in the given directory."""
+    """Return true if a poetry env exists in the given directory."""
     candidate_path = directory.joinpath("poetry.lock")
     return candidate_path.is_file()
-
-
-def activate_poetry(directory: Path) -> str:
-    """Activate the poetry environment in the given directory."""
-    env_path = poetry_env_path(directory)
-    return str(env_path / "bin" / "activate")
 
 
 def poetry_env_path(directory: Path) -> Union[Path, None]:
     """Return the path of the venv associated with a poetry project directory."""
     try:
-        return Path(
+        env_list = (
             subprocess.run(
-                ["poetry", "-C", str(directory), "env", "info", "--path"],
+                ["poetry", "env", "list", "--full-path"],
+                cwd=directory,
                 capture_output=True,
             )
             .stdout.decode()
             .strip()
         )
+        if env_list.endswith(" (Activated)"):
+            return Path(env_list[:-12])
     except subprocess.CalledProcessError:
         return None
+    else:
+        return Path(env_list)
 
 
 if __name__ == "__main__":
