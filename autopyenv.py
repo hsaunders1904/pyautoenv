@@ -5,7 +5,6 @@ import argparse
 import enum
 import os
 import subprocess
-from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TextIO, Union
@@ -34,7 +33,7 @@ class Env:
     env_type: EnvType
 
 
-def main(sys_args: Sequence[str], stdout: TextIO) -> int:
+def main(sys_args: list[str], stdout: TextIO) -> int:
     """Activate environment if it exists in the given directory."""
     args = parse_args(sys_args)
     if not args.directory.is_dir():
@@ -53,7 +52,7 @@ def main(sys_args: Sequence[str], stdout: TextIO) -> int:
     return 0
 
 
-def parse_args(sys_args: Sequence[str]) -> CliArgs:
+def parse_args(sys_args: list[str]) -> CliArgs:
     """Parse the sequence of command line arguments."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
