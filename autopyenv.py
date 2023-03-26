@@ -67,7 +67,7 @@ def parse_args(sys_args: Sequence[str]) -> CliArgs:
     return CliArgs(**vars(args))
 
 
-def discover_env(directory: Path) -> Env | None:
+def discover_env(directory: Path) -> Union[Env, None]:
     """Find an environment in the given directory, or any of its parents."""
     while directory != directory.parent:
         if env := check_env(directory):
