@@ -44,55 +44,51 @@ def test_main_does_nothing_given_directory_does_not_exist():
     assert not stdout.read()
 
 
-def make_venv_fs_structure(fs: FakeFilesystem) -> FakeFilesystem:
-    fs.create_dir("python_project/src")
-    fs.create_file("python_project/.venv/bin/activate")
-    fs.create_dir("not_a_venv")
-    return fs
-
-
 class TestVenv:
     def setup_method(self):
         os.environ = {}  # noqa: B003
 
-    def test_activates_given_venv_dir(self, fs: FakeFilesystem):
+    @pytest.fixture(scope="function", autouse=True)
+    def fs(self, fs: FakeFilesystem) -> FakeFilesystem:
+        """Create a mock filesystem for every test in this class."""
+        fs.create_dir("python_project/src")
+        fs.create_file("python_project/.venv/bin/activate")
+        fs.create_dir("not_a_venv")
+        return fs
+
+    def test_activates_given_venv_dir(self):
         stdout = StringIO()
-        fs = make_venv_fs_structure(fs)
 
         assert aenv.main(["python_project"], stdout) == 0
         stdout.seek(0)
         expected_path = Path("python_project") / ".venv" / "bin" / "activate"
         assert stdout.read() == f"source {expected_path}"
 
-    def test_activates_if_venv_in_parent(self, fs: FakeFilesystem):
+    def test_activates_if_venv_in_parent(self):
         stdout = StringIO()
-        fs = make_venv_fs_structure(fs)
 
         assert aenv.main(["python_project/src"], stdout) == 0
         stdout.seek(0)
         expected_path = Path("python_project") / ".venv" / "bin" / "activate"
         assert stdout.read() == f"source {expected_path}"
 
-    def test_nothing_happens_given_venv_dir_is_already_activate(self, fs):
+    def test_nothing_happens_given_venv_dir_is_already_activate(self):
         stdout = StringIO()
-        fs = make_venv_fs_structure(fs)
         os.environ["VIRTUAL_ENV"] = "/python_project"
 
         assert aenv.main(["python_project"], stdout) == 0
         stdout.seek(0)
         assert not stdout.read()
 
-    def test_nothing_happens_given_not_venv_dir_and_not_activate(self, fs):
+    def test_nothing_happens_given_not_venv_dir_and_not_activate(self):
         stdout = StringIO()
-        fs = make_venv_fs_structure(fs)
 
         assert aenv.main(["not_a_venv"], stdout) == 0
         stdout.seek(0)
         assert not stdout.read()
 
-    def test_deactivate_given_active_and_not_venv_dir(self, fs):
+    def test_deactivate_given_active_and_not_venv_dir(self):
         stdout = StringIO()
-        fs = make_venv_fs_structure(fs)
         os.environ["VIRTUAL_ENV"] = "/python_project"
 
         assert aenv.main(["not_a_venv"], stdout) == 0
@@ -101,7 +97,6 @@ class TestVenv:
 
     def test_deactivate_and_activate_switching_to_new_venv(self, fs):
         stdout = StringIO()
-        fs = make_venv_fs_structure(fs)
         fs.create_file("pyproj2/.venv/bin/activate")
         os.environ["VIRTUAL_ENV"] = "/python_project"
 
@@ -119,7 +114,6 @@ class TestVenv:
     ):
         poetry_env_mock.return_value = Path("poetry_proj-X-py3.8")
         stdout = StringIO()
-        fs = make_venv_fs_structure(fs)
         fs.create_file("poetry_proj/poetry.lock")
         fs.create_file(f"{poetry_env_mock.return_value}/bin/activate")
         os.environ["VIRTUAL_ENV"] = "/python_project"
@@ -133,21 +127,12 @@ class TestVenv:
 
     def test_does_nothing_if_activate_script_is_not_file(self, fs):
         stdout = StringIO()
-        fs = make_venv_fs_structure(fs)
         # venv directory exists, but not the activate script
         fs.remove("python_project/.venv/bin/activate")
 
         assert aenv.main(["python_project"], stdout) == 0
         stdout.seek(0)
         assert not stdout.read()
-
-
-def make_poetry_fs_structure(fs: FakeFilesystem) -> FakeFilesystem:
-    fs.create_file("python_project/poetry.lock")
-    fs.create_dir("python_project/src")
-    fs.create_dir("not_a_poetry_project")
-    fs.create_file("virtualenvs/python_project-X-py3.11/bin/activate")
-    return fs
 
 
 class TestPoetry:
@@ -166,9 +151,17 @@ class TestPoetry:
     def teardown_method(self):
         self.env_path_mock.reset_mock()
 
-    def test_activates_given_poetry_dir(self, fs):
+    @pytest.fixture(scope="function", autouse=True)
+    def fs(self, fs: FakeFilesystem) -> FakeFilesystem:
+        """Create a mock filesystem for every test in this class."""
+        fs.create_file("python_project/poetry.lock")
+        fs.create_dir("python_project/src")
+        fs.create_dir("not_a_poetry_project")
+        fs.create_file("virtualenvs/python_project-X-py3.11/bin/activate")
+        return fs
+
+    def test_activates_given_poetry_dir(self):
         stdout = StringIO()
-        fs = make_poetry_fs_structure(fs)
         venv_path = "/virtualenvs/python_project-X-py3.11"
         self.env_path_mock.return_value = venv_path
 
@@ -177,9 +170,8 @@ class TestPoetry:
         expected_path = Path(venv_path) / "bin" / "activate"
         assert stdout.read() == f"source {expected_path}"
 
-    def test_activates_given_poetry_dir_in_parent(self, fs):
+    def test_activates_given_poetry_dir_in_parent(self):
         stdout = StringIO()
-        fs = make_poetry_fs_structure(fs)
         venv_path = "/virtualenvs/python_project-X-py3.11"
         self.env_path_mock.return_value = venv_path
 
@@ -188,17 +180,14 @@ class TestPoetry:
         expected_path = Path(venv_path) / "bin" / "activate"
         assert stdout.read() == f"source {expected_path}"
 
-    def test_nothing_happens_given_not_venv_dir_and_not_activate(self, fs):
+    def test_nothing_happens_given_not_venv_dir_and_not_activate(self):
         stdout = StringIO()
-        fs = make_poetry_fs_structure(fs)
-
         assert aenv.main(["not_a_poetry_project"], stdout) == 0
         stdout.seek(0)
         assert not stdout.read()
 
-    def test_nothing_happens_given_venv_dir_is_already_activate(self, fs):
+    def test_nothing_happens_given_venv_dir_is_already_activate(self):
         stdout = StringIO()
-        fs = make_poetry_fs_structure(fs)
         venv_path = "/virtualenvs/python_project-X-py3.11"
         self.env_path_mock.return_value = venv_path
         os.environ["VIRTUAL_ENV"] = venv_path
@@ -207,9 +196,8 @@ class TestPoetry:
         stdout.seek(0)
         assert not stdout.read()
 
-    def test_deactivate_given_active_and_not_venv_dir(self, fs):
+    def test_deactivate_given_active_and_not_venv_dir(self):
         stdout = StringIO()
-        fs = make_poetry_fs_structure(fs)
         os.environ["VIRTUAL_ENV"] = "/python_project"
 
         assert aenv.main(["not_a_poetry_project"], stdout) == 0
@@ -218,7 +206,6 @@ class TestPoetry:
 
     def test_deactivate_and_activate_switching_to_new_poetry_env(self, fs):
         stdout = StringIO()
-        fs = make_poetry_fs_structure(fs)
         fs.create_file("pyproj2/poetry.lock")
         new_venv = "virtualenvs/pyproj2-Y-py3.8"
         self.env_path_mock.return_value = new_venv
@@ -236,11 +223,9 @@ class TestPoetry:
     @pytest.mark.parametrize("env_path_list", ["", None, "\n", "\n\n"])
     def test_nothing_happens_given_poetry_path_cannot_be_found(
         self,
-        fs,
         env_path_list,
     ):
         stdout = StringIO()
-        fs = make_poetry_fs_structure(fs)
         self.env_path_mock.return_value = env_path_list
 
         assert aenv.main(["python_project"], stdout) == 0
@@ -249,7 +234,6 @@ class TestPoetry:
 
     def test_activates_with_poetry_env_with_activated_path_prefix(self, fs):
         stdout = StringIO()
-        fs = make_poetry_fs_structure(fs)
         fs.create_dir("/virtualenvs/python_project-Y-py3.9")
         venv_path = "/virtualenvs/python_project-X-py3.11"
         self.env_path_mock.return_value = "\n".join(
@@ -269,7 +253,6 @@ class TestPoetry:
         fs,
     ):
         stdout = StringIO()
-        fs = make_poetry_fs_structure(fs)
         venv_path = "/virtualenvs/python_project-X-py3.11"
         fs.create_dir("/virtualenvs/python_project-Y-py3.9")
         self.env_path_mock.return_value = "\n".join(
@@ -281,9 +264,8 @@ class TestPoetry:
         expected_path = Path(venv_path) / "bin" / "activate"
         assert stdout.read() == f"source {expected_path}"
 
-    def test_activates_with_poetry_env_only_if_dir_exists(self, fs):
+    def test_activates_with_poetry_env_only_if_dir_exists(self):
         stdout = StringIO()
-        fs = make_poetry_fs_structure(fs)
         venv_path = "/virtualenvs/python_project-X-py3.11"
         self.env_path_mock.return_value = "\n".join(
             [
@@ -299,7 +281,6 @@ class TestPoetry:
 
     def test_does_nothing_if_all_paths_returned_by_poetry_not_dirs(self, fs):
         stdout = StringIO()
-        fs = make_poetry_fs_structure(fs)
         fs.create_file("/is/a/file")
         self.env_path_mock.return_value = "\n".join(
             ["/not/a/dir", "/is/a/file"],
@@ -311,7 +292,6 @@ class TestPoetry:
 
     def test_does_nothing_if_activate_script_is_not_file(self, fs):
         stdout = StringIO()
-        fs = make_poetry_fs_structure(fs)
         venv_path = "/virtualenvs/python_project-X-py3.11"
         # delete the activate script
         fs.remove(f"{venv_path}/bin/activate")
