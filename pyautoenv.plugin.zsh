@@ -1,4 +1,4 @@
-# py-autoenv Automatically activate and deactivate Python environments.
+# zsh-pyautoenv Automatically activate and deactivate Python environments.
 # Copyright (C) 2023  Harry Saunders.
 #
 # This program is free software: you can redistribute it and/or modify
