@@ -8,7 +8,7 @@ from pyfakefs.fake_filesystem import FakeFilesystem
 import autopyenv as aenv
 
 
-def test_parse_args_directory_is_pwd_by_default():
+def test_parse_args_directory_is_cwd_by_default():
     args = aenv.parse_args([])
 
     assert args.directory == Path.cwd()
@@ -25,7 +25,7 @@ def test_main_does_nothing_given_directory_does_not_exist():
 
     assert aenv.main(["/not/a/dir"], stdout) == 1
     stdout.seek(0)
-    assert stdout.read() == ""
+    assert not stdout.read()
 
 
 def make_venv_fs_structure(fs: FakeFilesystem) -> FakeFilesystem:
@@ -37,7 +37,7 @@ def make_venv_fs_structure(fs: FakeFilesystem) -> FakeFilesystem:
 
 class TestVenv:
     def setup_method(self):
-        os.environ = {}
+        os.environ = {}  # noqa: B003
 
     def test_activates_given_venv_dir(self, fs: FakeFilesystem):
         stdout = StringIO()
@@ -64,7 +64,7 @@ class TestVenv:
 
         assert aenv.main(["python_project"], stdout) == 0
         stdout.seek(0)
-        assert stdout.read() == ""
+        assert not stdout.read()
 
     def test_nothing_happens_given_not_venv_dir_and_not_activate(self, fs):
         stdout = StringIO()
@@ -72,7 +72,7 @@ class TestVenv:
 
         assert aenv.main(["not_a_venv"], stdout) == 0
         stdout.seek(0)
-        assert stdout.read() == ""
+        assert not stdout.read()
 
     def test_deactivate_given_active_and_not_venv_dir(self, fs):
         stdout = StringIO()
@@ -94,7 +94,11 @@ class TestVenv:
         assert stdout.read() == "deactivate && source pyproj2/.venv/bin/activate"
 
     @mock.patch("autopyenv.poetry_env_path")
-    def test_deactivate_and_activate_switching_to_poetry(self, poetry_env_mock, fs):
+    def test_deactivate_and_activate_switching_to_poetry(
+        self,
+        poetry_env_mock,
+        fs,
+    ):
         poetry_env_mock.return_value = Path("poetry_proj-X-py3.8")
         stdout = StringIO()
         fs = make_venv_fs_structure(fs)
@@ -116,16 +120,17 @@ def make_poetry_fs_structure(fs: FakeFilesystem) -> FakeFilesystem:
 
 
 class TestPoetry:
+    @classmethod
     def setup_class(cls):
         cls.env_path_patch = mock.patch("autopyenv.poetry_env_path")
         cls.env_path_mock = cls.env_path_patch.start()
 
+    @classmethod
     def teardown_class(cls):
         cls.env_path_patch.stop()
-        # cls.which_patch.stop()
 
     def setup_method(self):
-        os.environ = {"PATH": "/bin"}
+        os.environ = {"PATH": "/bin"}  # noqa: B003
 
     def teardown_method(self):
         self.env_path_mock.reset_mock()
@@ -158,7 +163,7 @@ class TestPoetry:
 
         assert aenv.main(["not_a_poetry_project"], stdout) == 0
         stdout.seek(0)
-        assert stdout.read() == ""
+        assert not stdout.read()
 
     def test_nothing_happens_given_venv_dir_is_already_activate(self, fs):
         stdout = StringIO()
@@ -169,7 +174,7 @@ class TestPoetry:
 
         assert aenv.main(["python_project"], stdout) == 0
         stdout.seek(0)
-        assert stdout.read() == ""
+        assert not stdout.read()
 
     def test_deactivate_given_active_and_not_venv_dir(self, fs):
         stdout = StringIO()
@@ -205,4 +210,4 @@ class TestPoetry:
 
         assert aenv.main(["python_project"], stdout) == 0
         stdout.seek(0)
-        assert stdout.read() == ""
+        assert not stdout.read()
