@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, TextIO, Union
 
+__version__ = "0.1.0"
+
 
 @dataclass
 class CliArgs:
@@ -60,6 +62,12 @@ def parse_args(sys_args: List[str]) -> CliArgs:
         help="the path to look in for a python environment",
         default=Path.cwd(),
         nargs="?",
+    )
+    parser.add_argument(
+        "-V",
+        "--version",
+        action="version",
+        version=f"autopyenv {__version__}",
     )
     args = parser.parse_args(sys_args)
     return CliArgs(**vars(args))

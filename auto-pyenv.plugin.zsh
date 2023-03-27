@@ -14,5 +14,10 @@ function _zsh_autopyenv_activate() {
     fi
 }
 
+function _zsh_autopyenv_version() {
+    python3 "${THIS_DIR}/autopyenv.py" --version
+}
+
+
 autoload -Uz add-zsh-hook
 add-zsh-hook chpwd _zsh_autopyenv_activate
