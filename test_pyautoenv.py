@@ -21,17 +21,17 @@ from unittest import mock
 import pytest
 from pyfakefs.fake_filesystem import FakeFilesystem
 
-import pyautoenv as aenv
+import pyautoenv
 
 
 def test_parse_args_directory_is_cwd_by_default():
-    args = aenv.parse_args([])
+    args = pyautoenv.parse_args([])
 
     assert args.directory == Path.cwd()
 
 
 def test_parse_args_directory_is_set():
-    args = aenv.parse_args(["/some/dir"])
+    args = pyautoenv.parse_args(["/some/dir"])
 
     assert args.directory == Path("/some/dir")
 
@@ -39,7 +39,7 @@ def test_parse_args_directory_is_set():
 def test_main_does_nothing_given_directory_does_not_exist():
     stdout = StringIO()
 
-    assert aenv.main(["/not/a/dir"], stdout) == 1
+    assert pyautoenv.main(["/not/a/dir"], stdout) == 1
     stdout.seek(0)
     assert not stdout.read()
 
@@ -59,7 +59,7 @@ class TestVenv:
     def test_activates_given_venv_dir(self):
         stdout = StringIO()
 
-        assert aenv.main(["python_project"], stdout) == 0
+        assert pyautoenv.main(["python_project"], stdout) == 0
         stdout.seek(0)
         expected_path = Path("python_project") / ".venv" / "bin" / "activate"
         assert stdout.read() == f"source {expected_path}"
@@ -67,7 +67,7 @@ class TestVenv:
     def test_activates_if_venv_in_parent(self):
         stdout = StringIO()
 
-        assert aenv.main(["python_project/src"], stdout) == 0
+        assert pyautoenv.main(["python_project/src"], stdout) == 0
         stdout.seek(0)
         expected_path = Path("python_project") / ".venv" / "bin" / "activate"
         assert stdout.read() == f"source {expected_path}"
@@ -76,14 +76,14 @@ class TestVenv:
         stdout = StringIO()
         os.environ["VIRTUAL_ENV"] = "/python_project"
 
-        assert aenv.main(["python_project"], stdout) == 0
+        assert pyautoenv.main(["python_project"], stdout) == 0
         stdout.seek(0)
         assert not stdout.read()
 
     def test_nothing_happens_given_not_venv_dir_and_not_activate(self):
         stdout = StringIO()
 
-        assert aenv.main(["not_a_venv"], stdout) == 0
+        assert pyautoenv.main(["not_a_venv"], stdout) == 0
         stdout.seek(0)
         assert not stdout.read()
 
@@ -91,7 +91,7 @@ class TestVenv:
         stdout = StringIO()
         os.environ["VIRTUAL_ENV"] = "/python_project"
 
-        assert aenv.main(["not_a_venv"], stdout) == 0
+        assert pyautoenv.main(["not_a_venv"], stdout) == 0
         stdout.seek(0)
         assert stdout.read() == "deactivate"
 
@@ -100,7 +100,7 @@ class TestVenv:
         fs.create_file("pyproj2/.venv/bin/activate")
         os.environ["VIRTUAL_ENV"] = "/python_project"
 
-        assert aenv.main(["pyproj2"], stdout=stdout) == 0
+        assert pyautoenv.main(["pyproj2"], stdout=stdout) == 0
         stdout.seek(0)
         assert (
             stdout.read() == "deactivate && source pyproj2/.venv/bin/activate"
@@ -118,7 +118,7 @@ class TestVenv:
         fs.create_file(f"{poetry_env_mock.return_value}/bin/activate")
         os.environ["VIRTUAL_ENV"] = "/python_project"
 
-        assert aenv.main(["poetry_proj"], stdout) == 0
+        assert pyautoenv.main(["poetry_proj"], stdout) == 0
         stdout.seek(0)
         assert (
             stdout.read()
@@ -130,7 +130,7 @@ class TestVenv:
         # venv directory exists, but not the activate script
         fs.remove("python_project/.venv/bin/activate")
 
-        assert aenv.main(["python_project"], stdout) == 0
+        assert pyautoenv.main(["python_project"], stdout) == 0
         stdout.seek(0)
         assert not stdout.read()
 
@@ -165,7 +165,7 @@ class TestPoetry:
         venv_path = "/virtualenvs/python_project-X-py3.11"
         self.env_path_mock.return_value = venv_path
 
-        assert aenv.main(["python_project"], stdout) == 0
+        assert pyautoenv.main(["python_project"], stdout) == 0
         stdout.seek(0)
         expected_path = Path(venv_path) / "bin" / "activate"
         assert stdout.read() == f"source {expected_path}"
@@ -175,14 +175,14 @@ class TestPoetry:
         venv_path = "/virtualenvs/python_project-X-py3.11"
         self.env_path_mock.return_value = venv_path
 
-        assert aenv.main(["python_project/src"], stdout) == 0
+        assert pyautoenv.main(["python_project/src"], stdout) == 0
         stdout.seek(0)
         expected_path = Path(venv_path) / "bin" / "activate"
         assert stdout.read() == f"source {expected_path}"
 
     def test_nothing_happens_given_not_venv_dir_and_not_activate(self):
         stdout = StringIO()
-        assert aenv.main(["not_a_poetry_project"], stdout) == 0
+        assert pyautoenv.main(["not_a_poetry_project"], stdout) == 0
         stdout.seek(0)
         assert not stdout.read()
 
@@ -192,7 +192,7 @@ class TestPoetry:
         self.env_path_mock.return_value = venv_path
         os.environ["VIRTUAL_ENV"] = venv_path
 
-        assert aenv.main(["python_project"], stdout) == 0
+        assert pyautoenv.main(["python_project"], stdout) == 0
         stdout.seek(0)
         assert not stdout.read()
 
@@ -200,7 +200,7 @@ class TestPoetry:
         stdout = StringIO()
         os.environ["VIRTUAL_ENV"] = "/python_project"
 
-        assert aenv.main(["not_a_poetry_project"], stdout) == 0
+        assert pyautoenv.main(["not_a_poetry_project"], stdout) == 0
         stdout.seek(0)
         assert stdout.read() == "deactivate"
 
@@ -213,7 +213,7 @@ class TestPoetry:
         active_venv = Path("virtualenvs/python_project-X-py3.11")
         os.environ["VIRTUAL_ENV"] = active_venv
 
-        assert aenv.main(["pyproj2"], stdout=stdout) == 0
+        assert pyautoenv.main(["pyproj2"], stdout=stdout) == 0
         stdout.seek(0)
         assert (
             stdout.read()
@@ -228,7 +228,7 @@ class TestPoetry:
         stdout = StringIO()
         self.env_path_mock.return_value = env_path_list
 
-        assert aenv.main(["python_project"], stdout) == 0
+        assert pyautoenv.main(["python_project"], stdout) == 0
         stdout.seek(0)
         assert not stdout.read()
 
@@ -243,7 +243,7 @@ class TestPoetry:
             ],
         )
 
-        assert aenv.main(["python_project"], stdout) == 0
+        assert pyautoenv.main(["python_project"], stdout) == 0
         stdout.seek(0)
         expected_path = Path(venv_path) / "bin" / "activate"
         assert stdout.read() == f"source {expected_path}"
@@ -259,7 +259,7 @@ class TestPoetry:
             [f"{venv_path}", "/virtualenvs/python_project-Y-py3.9"],
         )
 
-        assert aenv.main(["python_project"], stdout) == 0
+        assert pyautoenv.main(["python_project"], stdout) == 0
         stdout.seek(0)
         expected_path = Path(venv_path) / "bin" / "activate"
         assert stdout.read() == f"source {expected_path}"
@@ -274,7 +274,7 @@ class TestPoetry:
             ],
         )
 
-        assert aenv.main(["python_project"], stdout) == 0
+        assert pyautoenv.main(["python_project"], stdout) == 0
         stdout.seek(0)
         expected_path = Path(venv_path) / "bin" / "activate"
         assert stdout.read() == f"source {expected_path}"
@@ -286,7 +286,7 @@ class TestPoetry:
             ["/not/a/dir", "/is/a/file"],
         )
 
-        assert aenv.main(["python_project"], stdout) == 0
+        assert pyautoenv.main(["python_project"], stdout) == 0
         stdout.seek(0)
         assert not stdout.read()
 
@@ -297,6 +297,6 @@ class TestPoetry:
         fs.remove(f"{venv_path}/bin/activate")
         self.env_path_mock.return_value = venv_path
 
-        assert aenv.main(["python_project"], stdout) == 0
+        assert pyautoenv.main(["python_project"], stdout) == 0
         stdout.seek(0)
         assert not stdout.read()
