@@ -231,3 +231,65 @@ class TestPoetry:
         assert aenv.main(["python_project"], stdout) == 0
         stdout.seek(0)
         assert not stdout.read()
+
+    def test_activates_with_poetry_env_with_activated_path_prefix(self, fs):
+        stdout = StringIO()
+        fs = make_poetry_fs_structure(fs)
+        fs.create_dir("/virtualenvs/python_project-Y-py3.9")
+        venv_path = "/virtualenvs/python_project-X-py3.11"
+        self.env_path_mock.return_value = "\n".join(
+            [
+                "/virtualenvs/python_project-Y-py3.9",
+                f"{venv_path} (Activated)",
+            ],
+        )
+
+        assert aenv.main(["python_project"], stdout) == 0
+        stdout.seek(0)
+        expected_path = Path(venv_path) / "bin" / "activate"
+        assert stdout.read() == f"source {expected_path}"
+
+    def test_activates_with_first_poetry_env_if_no_activated_path_prefix(
+        self,
+        fs,
+    ):
+        stdout = StringIO()
+        fs = make_poetry_fs_structure(fs)
+        venv_path = "/virtualenvs/python_project-X-py3.11"
+        fs.create_dir("/virtualenvs/python_project-Y-py3.9")
+        self.env_path_mock.return_value = "\n".join(
+            [f"{venv_path}", "/virtualenvs/python_project-Y-py3.9"],
+        )
+
+        assert aenv.main(["python_project"], stdout) == 0
+        stdout.seek(0)
+        expected_path = Path(venv_path) / "bin" / "activate"
+        assert stdout.read() == f"source {expected_path}"
+
+    def test_activates_with_poetry_env_only_if_dir_exists(self, fs):
+        stdout = StringIO()
+        fs = make_poetry_fs_structure(fs)
+        venv_path = "/virtualenvs/python_project-X-py3.11"
+        self.env_path_mock.return_value = "\n".join(
+            [
+                f"{venv_path}",
+                "/virtualenvs/python_project-Y-py3.9 (Activated)",
+            ],
+        )
+
+        assert aenv.main(["python_project"], stdout) == 0
+        stdout.seek(0)
+        expected_path = Path(venv_path) / "bin" / "activate"
+        assert stdout.read() == f"source {expected_path}"
+
+    def test_does_nothing_if_all_paths_returned_by_poetry_not_dirs(self, fs):
+        stdout = StringIO()
+        fs = make_poetry_fs_structure(fs)
+        fs.create_file("/is/a/file")
+        self.env_path_mock.return_value = "\n".join(
+            ["/not/a/dir", "/is/a/file"],
+        )
+
+        assert aenv.main(["python_project"], stdout) == 0
+        stdout.seek(0)
+        assert not stdout.read()
