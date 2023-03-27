@@ -91,7 +91,9 @@ class TestVenv:
 
         assert aenv.main(["pyproj2"], stdout=stdout) == 0
         stdout.seek(0)
-        assert stdout.read() == "deactivate && source pyproj2/.venv/bin/activate"
+        assert (
+            stdout.read() == "deactivate && source pyproj2/.venv/bin/activate"
+        )
 
     @mock.patch("autopyenv.poetry_env_path")
     def test_deactivate_and_activate_switching_to_poetry(
@@ -108,7 +110,10 @@ class TestVenv:
 
         assert aenv.main(["poetry_proj"], stdout) == 0
         stdout.seek(0)
-        assert stdout.read() == "deactivate && source poetry_proj-X-py3.8/bin/activate"
+        assert (
+            stdout.read()
+            == "deactivate && source poetry_proj-X-py3.8/bin/activate"
+        )
 
 
 def make_poetry_fs_structure(fs: FakeFilesystem) -> FakeFilesystem:
