@@ -5,7 +5,7 @@ from unittest import mock
 
 from pyfakefs.fake_filesystem import FakeFilesystem
 
-import autopyenv as aenv
+import pyautoenv as aenv
 
 
 def test_parse_args_directory_is_cwd_by_default():
@@ -95,7 +95,7 @@ class TestVenv:
             stdout.read() == "deactivate && source pyproj2/.venv/bin/activate"
         )
 
-    @mock.patch("autopyenv.poetry_env_path")
+    @mock.patch("pyautoenv.poetry_env_path")
     def test_deactivate_and_activate_switching_to_poetry(
         self,
         poetry_env_mock,
@@ -127,7 +127,7 @@ def make_poetry_fs_structure(fs: FakeFilesystem) -> FakeFilesystem:
 class TestPoetry:
     @classmethod
     def setup_class(cls):
-        cls.env_path_patch = mock.patch("autopyenv.poetry_env_path")
+        cls.env_path_patch = mock.patch("pyautoenv.poetry_env_path")
         cls.env_path_mock = cls.env_path_patch.start()
 
     @classmethod

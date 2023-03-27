@@ -74,7 +74,7 @@ def parse_args(sys_args: List[str]) -> CliArgs:
         "-V",
         "--version",
         action="version",
-        version=f"autopyenv {__version__}",
+        version=f"pyautoenv {__version__}",
     )
     args = parser.parse_args(sys_args)
     return CliArgs(**vars(args))

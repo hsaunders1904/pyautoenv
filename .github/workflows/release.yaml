@@ -1,4 +1,4 @@
-name: auto-pyenv release
+name: py-autoenv release
 
 on:
   workflow_dispatch:
@@ -25,7 +25,7 @@ jobs:
         if ! [ "${{ github.event.inputs.version }}" = "${poetry_version}" ]; then
           exit 1;
         fi
-        script_version="$(python -c 'import autopyenv; print(autopyenv.__version__)')"
+        script_version="$(python -c 'import pyautoenv; print(pyautoenv.__version__)')"
         if ! [ "${poetry_version}" = "${script_version}" ]; then
           exit 1;
         fi
