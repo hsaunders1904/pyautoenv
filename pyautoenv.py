@@ -141,23 +141,24 @@ def check_poetry(directory: Path) -> bool:
 
 def poetry_env_path(directory: Path) -> Union[Path, None]:
     """Return the path of the venv associated with a poetry project directory."""
-    try:
-        env_path = (
-            subprocess.run(
-                ["poetry", "env", "list", "--full-path"],
-                cwd=directory,
-                capture_output=True,
-            )
-            .stdout.decode()
-            .strip()
-        )
-        if env_path.endswith(" (Activated)"):
-            env_path = env_path[:-12]
-    except subprocess.CalledProcessError:
-        return None
-    else:
-        if (path := Path(env_path)).is_dir():
+    if env_list_str := poetry_env_list_path(directory):
+        env_list_str = env_list_str.strip()
+        if env_list_str.endswith(" (Activated)"):
+            env_list_str = env_list_str[:-12]
+        if path := Path(env_list_str):
             return path
+    return None
+
+
+def poetry_env_list_path(directory: Path) -> Union[str, None]:
+    """Run 'poetry env list --full-path' and return the output."""
+    try:
+        return subprocess.run(
+            ["poetry", "env", "list", "--full-path"],
+            cwd=directory,
+            capture_output=True,
+        ).stdout.decode()
+    except subprocess.CalledProcessError:
         return None
 
 

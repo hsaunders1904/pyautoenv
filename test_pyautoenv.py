@@ -142,7 +142,7 @@ def make_poetry_fs_structure(fs: FakeFilesystem) -> FakeFilesystem:
 class TestPoetry:
     @classmethod
     def setup_class(cls):
-        cls.env_path_patch = mock.patch("pyautoenv.poetry_env_path")
+        cls.env_path_patch = mock.patch("pyautoenv.poetry_env_list_path")
         cls.env_path_mock = cls.env_path_patch.start()
 
     @classmethod
@@ -158,23 +158,23 @@ class TestPoetry:
     def test_activates_given_poetry_dir(self, fs):
         stdout = StringIO()
         fs = make_poetry_fs_structure(fs)
-        venv_path = Path("/virtualenvs/python_project-X-py3.11")
+        venv_path = "/virtualenvs/python_project-X-py3.11"
         self.env_path_mock.return_value = venv_path
 
         assert aenv.main(["python_project"], stdout) == 0
         stdout.seek(0)
-        expected_path = venv_path / "bin" / "activate"
+        expected_path = Path(venv_path) / "bin" / "activate"
         assert stdout.read() == f"source {expected_path}"
 
     def test_activates_given_poetry_dir_in_parent(self, fs):
         stdout = StringIO()
         fs = make_poetry_fs_structure(fs)
-        venv_path = Path("/virtualenvs/python_project-X-py3.11")
+        venv_path = "/virtualenvs/python_project-X-py3.11"
         self.env_path_mock.return_value = venv_path
 
         assert aenv.main(["python_project/src"], stdout) == 0
         stdout.seek(0)
-        expected_path = venv_path / "bin" / "activate"
+        expected_path = Path(venv_path) / "bin" / "activate"
         assert stdout.read() == f"source {expected_path}"
 
     def test_nothing_happens_given_not_venv_dir_and_not_activate(self, fs):
@@ -188,7 +188,7 @@ class TestPoetry:
     def test_nothing_happens_given_venv_dir_is_already_activate(self, fs):
         stdout = StringIO()
         fs = make_poetry_fs_structure(fs)
-        venv_path = Path("/virtualenvs/python_project-X-py3.11")
+        venv_path = "/virtualenvs/python_project-X-py3.11"
         self.env_path_mock.return_value = venv_path
         os.environ["VIRTUAL_ENV"] = venv_path
 
@@ -209,7 +209,7 @@ class TestPoetry:
         stdout = StringIO()
         fs = make_poetry_fs_structure(fs)
         fs.create_file("pyproj2/poetry.lock")
-        new_venv = Path("virtualenvs/pyproj2-Y-py3.8")
+        new_venv = "virtualenvs/pyproj2-Y-py3.8"
         self.env_path_mock.return_value = new_venv
         fs.create_dir(new_venv)
         active_venv = Path("virtualenvs/python_project-X-py3.11")
