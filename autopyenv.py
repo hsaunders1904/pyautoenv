@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Activate a python environment if it exists in the given directory."""
+"""
+Print a command to activate or deactivate a Python venv based on a directory.
+
+Supports environments managed by venv and poetry.
+"""
 
 import argparse
 import enum
@@ -55,7 +59,10 @@ def main(sys_args: List[str], stdout: TextIO) -> int:
 
 def parse_args(sys_args: List[str]) -> CliArgs:
     """Parse the sequence of command line arguments."""
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
     parser.add_argument(
         "directory",
         type=Path,
