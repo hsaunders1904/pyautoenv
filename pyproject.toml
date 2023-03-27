@@ -80,7 +80,7 @@ ignore = [
   "D212",
   # ignore one-blank line before class
   "D203",
-  #ignore implicit return None
+  # ignore implicit return None
   "RET502",
 ]
 
