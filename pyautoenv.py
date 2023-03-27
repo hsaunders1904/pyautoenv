@@ -121,10 +121,13 @@ def check_venv(directory: Path) -> bool:
 
 def env_activate_path(env: Env) -> Union[Path, None]:
     """Get the path to the activation script for the environment."""
+    path = None
     if env.env_type == EnvType.POETRY:
-        return env.directory / "bin" / "activate"
+        path = env.directory / "bin" / "activate"
     if env.env_type == EnvType.VENV:
-        return venv_path(env.directory)
+        path = venv_path(env.directory)
+    if path and (real_path := Path(path)).is_file():
+        return real_path
     return None
 
 

@@ -120,7 +120,7 @@ class TestVenv:
         stdout = StringIO()
         fs = make_venv_fs_structure(fs)
         fs.create_file("poetry_proj/poetry.lock")
-        fs.create_dir(poetry_env_mock.return_value)
+        fs.create_file(f"{poetry_env_mock.return_value}/bin/activate")
         os.environ["VIRTUAL_ENV"] = "/python_project"
 
         assert aenv.main(["poetry_proj"], stdout) == 0
@@ -130,12 +130,22 @@ class TestVenv:
             == "deactivate && source poetry_proj-X-py3.8/bin/activate"
         )
 
+    def test_does_nothing_if_activate_script_is_not_file(self, fs):
+        stdout = StringIO()
+        fs = make_venv_fs_structure(fs)
+        # venv directory exists, but not the activate script
+        fs.remove("python_project/.venv/bin/activate")
+
+        assert aenv.main(["python_project"], stdout) == 0
+        stdout.seek(0)
+        assert not stdout.read()
+
 
 def make_poetry_fs_structure(fs: FakeFilesystem) -> FakeFilesystem:
     fs.create_file("python_project/poetry.lock")
     fs.create_dir("python_project/src")
     fs.create_dir("not_a_poetry_project")
-    fs.create_dir("virtualenvs/python_project-X-py3.11")
+    fs.create_file("virtualenvs/python_project-X-py3.11/bin/activate")
     return fs
 
 
@@ -211,7 +221,7 @@ class TestPoetry:
         fs.create_file("pyproj2/poetry.lock")
         new_venv = "virtualenvs/pyproj2-Y-py3.8"
         self.env_path_mock.return_value = new_venv
-        fs.create_dir(new_venv)
+        fs.create_file(f"{new_venv}/bin/activate")
         active_venv = Path("virtualenvs/python_project-X-py3.11")
         os.environ["VIRTUAL_ENV"] = active_venv
 
@@ -289,6 +299,18 @@ class TestPoetry:
         self.env_path_mock.return_value = "\n".join(
             ["/not/a/dir", "/is/a/file"],
         )
+
+        assert aenv.main(["python_project"], stdout) == 0
+        stdout.seek(0)
+        assert not stdout.read()
+
+    def test_does_nothing_if_activate_script_is_not_file(self, fs):
+        stdout = StringIO()
+        fs = make_poetry_fs_structure(fs)
+        venv_path = "/virtualenvs/python_project-X-py3.11"
+        # delete the activate script
+        fs.remove(f"{venv_path}/bin/activate")
+        self.env_path_mock.return_value = venv_path
 
         assert aenv.main(["python_project"], stdout) == 0
         stdout.seek(0)
