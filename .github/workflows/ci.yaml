@@ -1,4 +1,4 @@
-name: zsh-pyautoenv test
+name: pyautoenv test
 
 on:
   pull_request:

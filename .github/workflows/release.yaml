@@ -1,4 +1,4 @@
-name: zsh-pyautoenv release
+name: pyautoenv release
 
 on:
   workflow_dispatch:
