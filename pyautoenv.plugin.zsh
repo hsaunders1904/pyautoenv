@@ -16,17 +16,17 @@
 THIS_DIR="${0:a:h}"
 
 function _zsh_pyautoenv_activate() {
+    if [ "${ZSH_PYAUTOENV_DISABLE-0}" -ne 0 ]; then
+        return
+    fi
     if [ -z "$(command -v python3)" ]; then
         return
     fi
-    if [ -n "${ZSH_pyautoenv_DISABLE}" ] && [ "${ZSH_pyautoenv_DISABLE}" -ne 0 ]; then
+    local pyautoenv_py="${THIS_DIR}/pyautoenv.py"
+    if ! [ -f "${pyautoenv_py}" ]; then
         return
     fi
-    local cmd
-    cmd="$(python3 "${THIS_DIR}/pyautoenv.py")"
-    if [ -n "${cmd}" ]; then
-        eval "${cmd}"
-    fi
+    eval "$(python3 "${pyautoenv_py}")"
 }
 
 function _zsh_pyautoenv_version() {
