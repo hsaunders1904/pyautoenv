@@ -181,4 +181,9 @@ def poetry_env_list_path(directory: Path) -> Union[str, None]:
 if __name__ == "__main__":
     import sys
 
-    sys.exit(main(sys.argv[1:], sys.stdout))
+    try:
+        exit_code = main(sys.argv[1:], sys.stdout)
+    except Exception as exc:  # noqa: BLE001
+        sys.stderr.write(f"pyautoenv: {exc}\n")
+        sys.exit(1)
+    sys.exit(exit_code)
