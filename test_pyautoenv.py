@@ -18,6 +18,7 @@ from io import StringIO
 from pathlib import Path
 from unittest import mock
 
+import pytest
 from pyfakefs.fake_filesystem import FakeFilesystem
 
 import pyautoenv as aenv
@@ -232,11 +233,15 @@ class TestPoetry:
             == "deactivate && source virtualenvs/pyproj2-Y-py3.8/bin/activate"
         )
 
-    def test_nothing_happens_given_poetry_path_cannot_be_found(self, fs):
+    @pytest.mark.parametrize("env_path_list", ["", None, "\n", "\n\n"])
+    def test_nothing_happens_given_poetry_path_cannot_be_found(
+        self,
+        fs,
+        env_path_list,
+    ):
         stdout = StringIO()
         fs = make_poetry_fs_structure(fs)
-        # cannot find the poetry environment directory
-        self.env_path_mock.return_value = None
+        self.env_path_mock.return_value = env_path_list
 
         assert aenv.main(["python_project"], stdout) == 0
         stdout.seek(0)
