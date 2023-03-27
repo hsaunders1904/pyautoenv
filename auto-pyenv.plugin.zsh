@@ -1,6 +1,9 @@
 THIS_DIR="${0:a:h}"
 
-function _auto_pyenv_activate() {
+function _zsh_autopyenv_activate() {
+    if [ -z "$(command -v python3)" ]; then
+        return
+    fi
     if [ -n "${ZSH_AUTOPYENV_DISABLE}" ] && [ "${ZSH_AUTOPYENV_DISABLE}" -ne 0 ]; then
         return
     fi
@@ -12,4 +15,4 @@ function _auto_pyenv_activate() {
 }
 
 autoload -Uz add-zsh-hook
-add-zsh-hook chpwd _auto_pyenv_activate
+add-zsh-hook chpwd _zsh_autopyenv_activate
