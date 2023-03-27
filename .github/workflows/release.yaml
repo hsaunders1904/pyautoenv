@@ -5,7 +5,7 @@ on:
     inputs:
       version:
         type: string
-        description: "New version"
+        description: "New version e.g., 3.1.4"
         required: true
 
 jobs:
