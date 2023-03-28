@@ -27,3 +27,16 @@ source <path to pyauotenv>/pyautoenv.bash
 Add this to your `.bashrc` to activate the application permanently.
 
 Note that this script will clobber the `cd` command.
+
+## PowerShell
+
+To enable the application in PowerShell, dot the `.ps1` file.
+
+```pwsh
+. <path to pyauotenv>\PyAutoEnv.ps1
+```
+
+Add to your profile (get the path to it using `${Profile}`) to activate
+the application permanently.
+
+Note that this script re-aliases `cd`.
