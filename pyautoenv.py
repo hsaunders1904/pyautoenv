@@ -164,7 +164,7 @@ def poetry_env_path(directory: Path) -> Union[Path, None]:
     return None
 
 
-def poetry_env_list_path(directory: Path) -> Union[list[str], None]:
+def poetry_env_list_path(directory: Path) -> Union[List[str], None]:
     """Try to get a list of poetry environments for a given directory."""
     try:
         return poetry_env_list_path_subprocess(directory).strip().split("\n")
