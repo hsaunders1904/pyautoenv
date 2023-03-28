@@ -146,10 +146,8 @@ def poetry_env_path(directory: Path) -> Union[Path, None]:
     as given by 'poetry env list --full-path'. If that doesn't work, take
     the first path that exists, or return None if none do.
     """
-    if env_list_str := poetry_env_list_path(directory):
-        env_list = env_list_str.strip().split("\n")
-        for env_path_raw in env_list:
-            env_path = env_path_raw.strip()
+    if env_list := poetry_env_list_path(directory):
+        for env_path in env_list:
             if (
                 env_path.endswith(" (Activated)")
                 and (path := Path(env_path[:-12])).is_dir()
@@ -161,17 +159,22 @@ def poetry_env_path(directory: Path) -> Union[Path, None]:
     return None
 
 
-def poetry_env_list_path(directory: Path) -> Union[str, None]:
-    """Run 'poetry env list --full-path' and return the output."""
+def poetry_env_list_path(directory: Path) -> Union[list[str], None]:
+    """Try to get a list of poetry environments for a given directory."""
     try:
-        return subprocess.run(
-            ["poetry", "env", "list", "--full-path"],
-            cwd=directory,
-            capture_output=True,
-            check=True,
-        ).stdout.decode()
+        return poetry_env_list_path_subprocess(directory).strip().split("\n")
     except (subprocess.CalledProcessError, FileNotFoundError):
         return None
+
+
+def poetry_env_list_path_subprocess(cwd: Path) -> str:
+    """Run 'poetry env list --full-path' and return the output."""
+    return subprocess.run(
+        ["poetry", "env", "list", "--full-path"],
+        cwd=cwd,
+        capture_output=True,
+        check=True,
+    ).stdout.decode()
 
 
 if __name__ == "__main__":
