@@ -168,8 +168,9 @@ def poetry_env_list_path(directory: Path) -> Union[str, None]:
             ["poetry", "env", "list", "--full-path"],
             cwd=directory,
             capture_output=True,
+            check=True,
         ).stdout.decode()
-    except subprocess.CalledProcessError:
+    except (subprocess.CalledProcessError, FileNotFoundError):
         return None
 
 
