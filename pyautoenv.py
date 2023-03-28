@@ -107,7 +107,7 @@ def discover_env(directory: Path) -> Union[Env, None]:
 def check_env(directory: Path) -> Union[Env, None]:
     """Return true if an environment exists in the given directory."""
     if check_venv(directory):
-        return Env(directory=directory, env_type=EnvType.VENV)
+        return Env(directory=directory / ".venv", env_type=EnvType.VENV)
     if check_poetry(directory) and (env_path := poetry_env_path(directory)):
         return Env(directory=env_path, env_type=EnvType.POETRY)
     return None
@@ -121,13 +121,8 @@ def check_venv(directory: Path) -> bool:
 
 def env_activate_path(env: Env) -> Union[Path, None]:
     """Get the path to the activation script for the environment."""
-    path = None
-    if env.env_type == EnvType.POETRY:
-        path = env.directory / "bin" / "activate"
-    if env.env_type == EnvType.VENV:
-        path = venv_path(env.directory)
-    if path and (real_path := Path(path)).is_file():
-        return real_path
+    if (path := env.directory / "bin" / "activate").is_file():
+        return path
     return None
 
 
