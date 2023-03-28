@@ -23,10 +23,9 @@ function _zsh_pyautoenv_activate() {
         return
     fi
     local pyautoenv_py="${THIS_DIR}/pyautoenv.py"
-    if ! [ -f "${pyautoenv_py}" ]; then
-        return
+    if [ -f "${pyautoenv_py}" ]; then
+        eval "$(python3 "${pyautoenv_py}")"
     fi
-    eval "$(python3 "${pyautoenv_py}")"
 }
 
 function _zsh_pyautoenv_version() {
