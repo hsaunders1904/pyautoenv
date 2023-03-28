@@ -23,12 +23,12 @@ function Invoke-PyAutoEnv() {
   if (${Env:PYAUTOENV_DISABLE} -ne 0 -And "${Env:PYAUTOENV_DISABLE}" -ne "") {
     return
   }
-  if (-Not (Test-Command python3)) {
+  if (-Not (Test-Command python)) {
     return
   }
   $PyAutoEnv = Join-Path "${PyAutoEnvDir}" "pyautoenv.py"
   if (Test-Path "${PyAutoEnv}") {
-    $Expression = "$(python3 "${PyAutoEnv}")"
+    $Expression = "$(python "${PyAutoEnv}")"
     if (${Expression}) {
       Invoke-Expression "${Expression}"
      }
