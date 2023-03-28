@@ -121,13 +121,18 @@ def check_venv(directory: Path) -> bool:
 
 def env_activate_path(env: Env) -> Union[Path, None]:
     """Get the path to the activation script for the environment."""
-    if (path := env.directory / "bin" / "activate").is_file():
+    if is_windows():
+        if (path := env.directory / "Scripts" / "Activate.ps1").is_file():
+            return path
+    elif (path := env.directory / "bin" / "activate").is_file():
         return path
     return None
 
 
 def venv_path(directory: Path) -> Path:
     """Get the path to the activate script for a venv."""
+    if is_windows():
+        return directory / ".venv" / "Scripts" / "Activate.ps1"
     return directory / ".venv" / "bin" / "activate"
 
 
@@ -175,6 +180,11 @@ def poetry_env_list_path_subprocess(cwd: Path) -> str:
         capture_output=True,
         check=True,
     ).stdout.decode()
+
+
+def is_windows() -> bool:
+    """Return True if the OS running the script is Windows."""
+    return os.name == "nt"
 
 
 if __name__ == "__main__":
