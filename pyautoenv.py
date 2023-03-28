@@ -66,9 +66,9 @@ def main(sys_args: List[str], stdout: TextIO) -> int:
         elif not new_env.directory.samefile(active_env_path):
             stdout.write("deactivate")
             if activate := env_activate_path(new_env):
-                stdout.write(f" && source {activate}")
+                stdout.write(f" && . {activate}")
     elif new_env and (activate := env_activate_path(new_env)):
-        stdout.write(f"source {activate}")
+        stdout.write(f". {activate}")
     return 0
 
 
