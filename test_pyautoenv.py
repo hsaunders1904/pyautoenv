@@ -107,14 +107,12 @@ class TestVenv:
 
     def test_deactivate_and_activate_switching_to_new_venv(self, fs):
         stdout = StringIO()
-        fs.create_file("pyproj2/.venv/bin/activate")
+        new_venv_activate = Path("pyproj2/.venv/bin/activate")
+        fs.create_file(new_venv_activate)
         activate_venv(self.VENV_DIR)
 
         assert pyautoenv.main(["pyproj2"], stdout=stdout) == 0
-        assert (
-            stdout.getvalue()
-            == "deactivate && source pyproj2/.venv/bin/activate"
-        )
+        assert stdout.getvalue() == f"deactivate && source {new_venv_activate}"
 
     @mock.patch("pyautoenv.poetry_env_path")
     def test_deactivate_and_activate_switching_to_poetry(
@@ -125,14 +123,15 @@ class TestVenv:
         stdout = StringIO()
         activate_venv(self.VENV_DIR)
         # create a poetry venv to switch into
-        poetry_env_mock.return_value = Path("poetry_proj-X-py3.8")
+        poetry_env = Path("poetry_proj-X-py3.8")
+        poetry_env_mock.return_value = poetry_env
         fs.create_file("poetry_proj/poetry.lock")
-        fs.create_file(f"{poetry_env_mock.return_value}/bin/activate")
+        fs.create_file(poetry_env / "bin" / "activate")
 
         assert pyautoenv.main(["poetry_proj"], stdout) == 0
         assert (
             stdout.getvalue()
-            == "deactivate && source poetry_proj-X-py3.8/bin/activate"
+            == f"deactivate && source {poetry_env / 'bin' / 'activate'}"
         )
 
     def test_does_nothing_if_activate_script_is_not_file(self, fs):
@@ -237,12 +236,10 @@ class TestPoetry:
 
     def test_activates_poetry_env_with_activated_path_suffix(self, fs):
         stdout = StringIO()
-        fs.create_dir("/virtualenvs/python_project-Y-py3.9")
+        new_venv = Path("/virtualenvs/python_project-Y-py3.9")
+        fs.create_file(new_venv / "bin" / "activate")
         self.env_list_path_mock.return_value = "\n".join(
-            [
-                "/virtualenvs/python_project-Y-py3.9",
-                f"{self.VENV_DIR} (Activated)",
-            ],
+            [str(new_venv), f"{self.VENV_DIR} (Activated)"],
         )
 
         assert pyautoenv.main([str(self.POETRY_PROJ)], stdout) == 0
@@ -253,9 +250,10 @@ class TestPoetry:
         fs,
     ):
         stdout = StringIO()
-        fs.create_dir("/virtualenvs/python_project-Y-py3.9")
+        new_venv = Path("/virtualenvs/python_project-Y-py3.9")
+        fs.create_file(new_venv / "bin" / "activate")
         self.env_list_path_mock.return_value = "\n".join(
-            [f"{self.VENV_DIR}", "/virtualenvs/python_project-Y-py3.9"],
+            [str(self.VENV_DIR), str(new_venv)],
         )
 
         assert pyautoenv.main([str(self.POETRY_PROJ)], stdout) == 0
@@ -263,11 +261,9 @@ class TestPoetry:
 
     def test_activates_with_poetry_env_only_if_dir_exists(self):
         stdout = StringIO()
+        new_venv = Path("/virtualenvs/python_project-Y-py3.9")
         self.env_list_path_mock.return_value = "\n".join(
-            [
-                f"{self.VENV_DIR}",
-                "/virtualenvs/python_project-Y-py3.9 (Activated)",
-            ],
+            [f"{self.VENV_DIR}", f"{new_venv} (Activated)"],
         )
 
         assert pyautoenv.main([str(self.POETRY_PROJ)], stdout) == 0
