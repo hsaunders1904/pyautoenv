@@ -14,3 +14,16 @@ plugins( pyautoenv )
 ```
 
 Note that you must have Python >= 3.8 on your path for the plugin to work.
+
+
+## Bash
+
+To enable the application in bash, source the bash script.
+
+```bash
+source <path to pyauotenv>/pyautoenv.bash
+```
+
+Add this to your `.bashrc` to activate the application permanently.
+
+Note that this script will clobber the `cd` command.

@@ -13,9 +13,18 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-THIS_DIR="${0:a:h}"
+if ! [[ $- == *i* ]]; then
+    # do not activate if the shell is not interactive
+    return
+fi
+if ! [ "$(type cd)" == "cd is a shell builtin" ]; then
+    >&2 echo "pyautoenv: cd is non-default, aborting activation so things don't break!"
+    return
+fi
 
-function _zsh_pyautoenv_activate() {
+THIS_DIR="$(cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd)"
+
+function _bash_pyautoenv_activate() {
     if [ "${PYAUTOENV_DISABLE-0}" -ne 0 ]; then
         return
     fi
@@ -28,9 +37,10 @@ function _zsh_pyautoenv_activate() {
     fi
 }
 
-function _zsh_pyautoenv_version() {
+function _bash_pyautoenv_version() {
     python3 "${THIS_DIR}/pyautoenv.py" --version
 }
 
-autoload -Uz add-zsh-hook
-add-zsh-hook chpwd _zsh_pyautoenv_activate
+function cd() {
+    builtin cd "$@" && _bash_pyautoenv_activate
+}
