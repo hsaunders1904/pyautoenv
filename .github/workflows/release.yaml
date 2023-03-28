@@ -22,7 +22,7 @@ jobs:
       run: |
         python -m pip install toml
         poetry_version="$(python -c 'import toml; print(toml.load("pyproject.toml")["tool"]["poetry"]["version"])')"
-        echo "Version from input:  ${{ github.event.inputs.version }"
+        echo "Version from input:  ${{ github.event.inputs.version }}"
         echo "Version from poetry: ${poetry_version}"
         if ! [ "${{ github.event.inputs.version }}" = "${poetry_version}" ]; then
           exit 1;
