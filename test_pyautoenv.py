@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import os
+import re
 from io import StringIO
 from pathlib import Path
 from subprocess import CalledProcessError
@@ -42,6 +43,13 @@ def test_parse_args_directory_is_set():
     args = pyautoenv.parse_args(["/some/dir"])
 
     assert args.directory == Path("/some/dir")
+
+
+def test_parse_args_version_prints_version_and_exits(capsys):
+    with pytest.raises(SystemExit):
+        pyautoenv.parse_args(["--version"])
+    stdout = capsys.readouterr().out
+    assert re.match(r"pyautoenv [0-9]+\.[0-9]+\.[0-9](\.\w+)?\n", stdout)
 
 
 def test_main_does_nothing_given_directory_does_not_exist():
