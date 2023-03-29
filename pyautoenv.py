@@ -25,6 +25,7 @@ import base64
 import enum
 import hashlib
 import os
+import platform
 import re
 import sys
 from dataclasses import dataclass
@@ -40,6 +41,14 @@ class CliArgs:
 
     directory: Path
     """Directory to look for a python environment in."""
+
+
+class Os(enum.Enum):
+    """Supported OS names."""
+
+    LINUX = enum.auto()
+    MACOS = enum.auto()
+    WINDOWS = enum.auto()
 
 
 class EnvType(enum.Enum):
@@ -124,7 +133,7 @@ def check_venv(directory: Path) -> bool:
 
 def env_activate_path(env: Env) -> Union[Path, None]:
     """Get the path to the activation script for the environment."""
-    if is_windows():
+    if operating_system() is Os.WINDOWS:
         if (path := env.directory / "Scripts" / "Activate.ps1").is_file():
             return path
     elif (path := env.directory / "bin" / "activate").is_file():
@@ -134,7 +143,7 @@ def env_activate_path(env: Env) -> Union[Path, None]:
 
 def venv_path(directory: Path) -> Path:
     """Get the path to the activate script for a venv."""
-    if is_windows():
+    if operating_system() is Os.WINDOWS:
         return directory / ".venv" / "Scripts" / "Activate.ps1"
     return directory / ".venv" / "bin" / "activate"
 
@@ -152,15 +161,20 @@ def poetry_env_path(directory: Path) -> Union[Path, None]:
     return None
 
 
-def is_windows() -> bool:
-    """Return True if the OS running the script is Windows."""
-    # TODO: use platform.system()
-    return os.name == "nt"
+def operating_system() -> Union[Os, None]:
+    """
+    Return the operating system the script's being run on.
 
-
-def is_macos() -> bool:
-    """Return True if the OS running the script is MacOS."""
-    return sys.platform == "darwin"
+    Return 'None' if we're on an operating system we can't handle.
+    """
+    platform_sys = platform.system()
+    if platform_sys == "Darwin":
+        return Os.MACOS
+    if platform_sys == "Windows":
+        return Os.WINDOWS
+    if platform_sys == "Linux":
+        return Os.LINUX
+    return None
 
 
 def poetry_cache_dir() -> Union[Path, None]:
@@ -168,11 +182,13 @@ def poetry_cache_dir() -> Union[Path, None]:
     cache_dir_str = os.environ.get("POETRY_CACHE_DIR", None)
     if cache_dir_str and (cache_dir := Path(cache_dir_str)).is_dir():
         return cache_dir
-    if is_windows():
+    if operating_system() is Os.WINDOWS:
         return windows_poetry_cache_dir()
-    if is_macos():
+    if operating_system() is Os.MACOS:
         return macos_poetry_cache_dir()
-    return linux_poetry_cache_dir()
+    if operating_system() is Os.LINUX:
+        return linux_poetry_cache_dir()
+    return None
 
 
 def linux_poetry_cache_dir() -> Union[Path, None]:
