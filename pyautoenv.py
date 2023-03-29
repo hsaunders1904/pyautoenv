@@ -266,16 +266,12 @@ def py_version() -> str:
 
 
 def poetry_project_name(directory: Path) -> Union[str, None]:
-    """Get the name of the poetry project in the given directory."""
-    if name := poetry_project_name_with_tomllib(directory):
-        return name
-    return poetry_project_name_without_tomllib(directory)
-
-
-def poetry_project_name_without_tomllib(directory: Path) -> Union[str, None]:
-    """Parse the poetry project name from the given directory without tomllib."""
-    with (directory / "pyproject.toml").open() as f:
-        pyproject = f.readlines()
+    """Parse the poetry project name from the given directory."""
+    try:
+        with (directory / "pyproject.toml").open() as f:
+            pyproject = f.readlines()
+    except OSError:
+        return None
     in_tool_poetry = False
     for line in pyproject:
         if line.strip() == "[tool.poetry]":
@@ -288,23 +284,6 @@ def poetry_project_name_without_tomllib(directory: Path) -> Union[str, None]:
             except IndexError:
                 continue
     return None
-
-
-def poetry_project_name_with_tomllib(directory: Path) -> Union[str, None]:
-    """Parse the poetry project name from the given directory using tomllib."""
-    try:
-        import tomllib
-    except ImportError:
-        return None
-    try:
-        with (directory / "pyproject.toml").open("rb") as f:
-            pyproject = tomllib.load(f)
-    except (FileNotFoundError, OSError):
-        return None
-    try:
-        return pyproject["tool"]["poetry"]["name"]
-    except KeyError:
-        return None
 
 
 if __name__ == "__main__":
