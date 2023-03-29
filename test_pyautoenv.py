@@ -63,7 +63,7 @@ class TestVenv:
     def setup_method(self):
         os.environ = {}  # noqa: B003
 
-    @pytest.fixture(scope="function", autouse=True)
+    @pytest.fixture(autouse=True)
     def fs(self, fs: FakeFilesystem) -> FakeFilesystem:
         """Create a mock filesystem for every test in this class."""
         fs.create_dir(self.PY_PROJ / "src")
@@ -182,7 +182,7 @@ class TestPoetry:
     def teardown_method(self):
         self.env_path_patch.stop()
 
-    @pytest.fixture(scope="function", autouse=True)
+    @pytest.fixture(autouse=True)
     def fs(self, fs: FakeFilesystem) -> FakeFilesystem:
         """Create a mock filesystem for every test in this class."""
         fs.create_file(self.POETRY_PROJ / "poetry.lock")
