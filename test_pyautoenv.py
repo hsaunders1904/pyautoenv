@@ -65,7 +65,7 @@ def activate_venv(venv_dir: Union[str, Path]) -> None:
 
 
 class TestVenv:
-    PY_PROJ = Path("python_project")
+    PY_PROJ = Path("/python_project")
     VENV_DIR = PY_PROJ / ".venv"
 
     def setup_method(self):
@@ -131,7 +131,7 @@ class TestVenv:
         activator,
     ):
         stdout = StringIO()
-        new_venv_activate = Path("pyproj2/.venv") / activator
+        new_venv_activate = Path("/pyproj2/.venv") / activator
         fs.create_file(new_venv_activate)
         activate_venv(self.VENV_DIR)
 
@@ -153,7 +153,7 @@ class TestVenv:
         # create a poetry venv to switch into
         poetry_env = Path("poetry_proj-X-py3.8")
         poetry_env_mock.return_value = poetry_env
-        fs.create_file("poetry_proj/poetry.lock")
+        fs.create_file("/poetry_proj/poetry.lock")
         fs.create_file(poetry_env / activator)
 
         with mock.patch(OS_NAME, new=os_name):
