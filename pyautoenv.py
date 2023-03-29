@@ -21,8 +21,11 @@ Supports environments managed by venv and poetry.
 """
 
 import argparse
+import base64
 import enum
+import hashlib
 import os
+import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -143,8 +146,28 @@ def check_poetry(directory: Path) -> bool:
 
 
 def poetry_env_path(directory: Path) -> Union[Path, None]:
+    """Return the path of the venv associated with a poetry project directory."""
+    if env_path := poetry_env_path_no_cli(directory):
+        return env_path
+    return poetry_env_path_cli(directory)
+
+
+def poetry_env_path_no_cli(directory: Path) -> Union[Path, None]:
     """
-    Return the path of the venv associated with a poetry project directory.
+    Get the poetry environment path without using the poetry CLI.
+
+    The poetry CLI is just so slow...
+    """
+    if (cache_dir := poetry_cache_dir()) is None:
+        return None
+    if (env_name := poetry_env_name(directory)) is None:
+        return None
+    return cache_dir / "virtualenvs" / env_name
+
+
+def poetry_env_path_cli(directory: Path) -> Union[Path, None]:
+    """
+    Get the poetry environment path using the poetry CLI.
 
     Note that there may be more than one poetry environment associated with
     a poetry project directory. We first take whichever env is 'Activated',
@@ -184,7 +207,104 @@ def poetry_env_list_path_subprocess(cwd: Path) -> str:
 
 def is_windows() -> bool:
     """Return True if the OS running the script is Windows."""
+    # TODO: use platform.system()
     return os.name == "nt"
+
+
+def is_macos() -> bool:
+    """Return True if the OS running the script is MacOS."""
+    return sys.platform == "darwin"
+
+
+def poetry_cache_dir() -> Union[Path, None]:
+    """Return the poetry cache directory, or None if it's not found."""
+    cache_dir_str = os.environ.get("POETRY_CACHE_DIR", None)
+    if cache_dir_str and (cache_dir := Path(cache_dir_str)).is_dir():
+        return cache_dir
+    if is_windows():
+        app_data = os.environ.get("LOCALAPPDATA", None)
+        if app_data and (cache_dir := Path(app_data) / "pypoetry").is_dir():
+            return cache_dir
+    elif (
+        is_macos()
+        and (
+            cache_dir := (Path.home() / "Library" / "Caches" / "pypoetry")
+        ).is_dir()
+    ):
+        return cache_dir
+    else:
+        xdg_cache = os.environ.get(
+            "XDG_CACHE_HOME",
+            str(Path.home() / ".cache"),
+        )
+        if (cache_dir := Path(xdg_cache) / "pypoetry").is_dir():
+            return cache_dir
+    return None
+
+
+def poetry_env_name(directory: Path) -> Union[str, None]:
+    """
+    Get the name of the poetry environment defined in the given directory.
+
+    Logic comes from the poetry source code:
+    https://github.com/python-poetry/poetry/blob/2b15ce10f02b0c6347fe2f12ae902488edeaaf7c/src/poetry/utils/env.py#L1207.
+    """
+    if (name := poetry_project_name(directory)) is None:
+        return None
+    name = name.lower()
+    sanitized_name = re.sub(r'[ $`!*@"\\\r\n\t]', "_", name)[:42]
+    normalized_cwd = os.path.normcase(os.path.realpath(directory))
+    h_bytes = hashlib.sha256(normalized_cwd.encode()).digest()
+    h_str = base64.urlsafe_b64encode(h_bytes).decode()[:8]
+    return f"{sanitized_name}-{h_str}-py{py_version()}"
+
+
+def py_version() -> str:
+    """Return the Python version in format '<major>.<minor>'."""
+    version = sys.version_info
+    return f"{version.major}.{version.minor}"
+
+
+def poetry_project_name(directory: Path) -> Union[str, None]:
+    """Get the name of the poetry project in the given directory."""
+    if name := poetry_project_name_with_tomllib(directory):
+        return name
+    return poetry_project_name_without_tomllib(directory)
+
+
+def poetry_project_name_without_tomllib(directory: Path) -> Union[str, None]:
+    """Parse the poetry project name from the given directory without tomllib."""
+    with (directory / "pyproject.toml").open() as f:
+        pyproject = f.readlines()
+    in_tool_poetry = False
+    for line in pyproject:
+        if line.strip() == "[tool.poetry]":
+            in_tool_poetry = True
+        if not in_tool_poetry:
+            continue
+        if line.startswith("name"):
+            try:
+                return line.split("=")[1].strip().strip('"')
+            except IndexError:
+                continue
+    return None
+
+
+def poetry_project_name_with_tomllib(directory: Path) -> Union[str, None]:
+    """Parse the poetry project name from the given directory using tomllib."""
+    try:
+        import tomllib
+    except ImportError:
+        return None
+    try:
+        with (directory / "pyproject.toml").open("rb") as f:
+            pyproject = tomllib.load(f)
+    except (FileNotFoundError, OSError):
+        return None
+    try:
+        return pyproject["tool"]["poetry"]["name"]
+    except KeyError:
+        return None
 
 
 if __name__ == "__main__":
