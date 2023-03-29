@@ -27,6 +27,7 @@ import hashlib
 import os
 import re
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, TextIO, Union
@@ -147,9 +148,13 @@ def check_poetry(directory: Path) -> bool:
 
 def poetry_env_path(directory: Path) -> Union[Path, None]:
     """Return the path of the venv associated with a poetry project directory."""
-    if env_path := poetry_env_path_no_cli(directory):
+    env_path = poetry_env_path_no_cli(directory)
+    if env_path and env_path.is_dir():
         return env_path
-    return poetry_env_path_cli(directory)
+    env_path = poetry_env_path_cli(directory)
+    if env_path and env_path.is_dir():
+        return env_path
+    return None
 
 
 def poetry_env_path_no_cli(directory: Path) -> Union[Path, None]:
@@ -287,8 +292,6 @@ def poetry_project_name(directory: Path) -> Union[str, None]:
 
 
 if __name__ == "__main__":
-    import sys
-
     try:
         exit_code = main(sys.argv[1:], sys.stdout)
     except Exception as exc:  # noqa: BLE001
