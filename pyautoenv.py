@@ -27,7 +27,6 @@ import hashlib
 import os
 import platform
 import re
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, TextIO, Union
@@ -263,6 +262,8 @@ def poetry_project_name(directory: Path) -> Union[str, None]:
 
 
 if __name__ == "__main__":
+    import sys
+
     try:
         exit_code = main(sys.argv[1:], sys.stdout)
     except Exception as exc:  # noqa: BLE001
