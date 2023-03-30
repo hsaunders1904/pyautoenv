@@ -66,7 +66,7 @@ class Env:
 
 
 def main(sys_args: List[str], stdout: TextIO) -> int:
-    """Activate environment if it exists in the given directory."""
+    """Write commands to activate/deactivate environments."""
     args = parse_args(sys_args)
     if not args.directory.is_dir():
         return 1
@@ -76,9 +76,9 @@ def main(sys_args: List[str], stdout: TextIO) -> int:
             stdout.write("deactivate")
         elif not new_env.directory.samefile(active_env_path):
             stdout.write("deactivate")
-            if activate := env_activate_path(new_env):
+            if activate := env_activation_path(new_env):
                 stdout.write(f" && . {activate}")
-    elif new_env and (activate := env_activate_path(new_env)):
+    elif new_env and (activate := env_activation_path(new_env)):
         stdout.write(f". {activate}")
     return 0
 
@@ -107,30 +107,30 @@ def parse_args(sys_args: List[str]) -> CliArgs:
 
 
 def discover_env(directory: Path) -> Union[Env, None]:
-    """Find an environment in the given directory, or any of its parents."""
+    """Find an environment in the given directory or any of its parents."""
     while directory != directory.parent:
-        if env := check_env(directory):
+        if env := get_virtual_env(directory):
             return env
         directory = directory.parent
     return None
 
 
-def check_env(directory: Path) -> Union[Env, None]:
-    """Return true if an environment exists in the given directory."""
-    if check_venv(directory):
+def get_virtual_env(directory: Path) -> Union[Env, None]:
+    """Return the environment if defined in the given directory."""
+    if has_venv(directory):
         return Env(directory=directory / ".venv", env_type=EnvType.VENV)
-    if check_poetry(directory) and (env_path := poetry_env_path(directory)):
+    if has_poetry_env(directory) and (env_path := poetry_env_path(directory)):
         return Env(directory=env_path, env_type=EnvType.POETRY)
     return None
 
 
-def check_venv(directory: Path) -> bool:
+def has_venv(directory: Path) -> bool:
     """Return true if a venv exists in the given directory."""
     candidate_path = venv_path(directory)
     return candidate_path.is_file()
 
 
-def env_activate_path(env: Env) -> Union[Path, None]:
+def env_activation_path(env: Env) -> Union[Path, None]:
     """Get the path to the activation script for the environment."""
     if operating_system() is Os.WINDOWS:
         if (path := env.directory / "Scripts" / "Activate.ps1").is_file():
@@ -147,15 +147,16 @@ def venv_path(directory: Path) -> Path:
     return directory / ".venv" / "bin" / "activate"
 
 
-def check_poetry(directory: Path) -> bool:
+def has_poetry_env(directory: Path) -> bool:
     """Return true if a poetry env exists in the given directory."""
-    candidate_path = directory.joinpath("poetry.lock")
-    return candidate_path.is_file()
+    return (directory / "poetry.lock").is_file() and (
+        directory / "pyproject.toml"
+    ).is_file()
 
 
 def poetry_env_path(directory: Path) -> Union[Path, None]:
     """Return the path of the venv associated with a poetry project directory."""
-    if env_list := poetry_env_list_no_cli(directory):
+    if env_list := poetry_env_list(directory):
         return max(env_list, key=lambda p: p.stat().st_mtime)
     return None
 
@@ -225,13 +226,13 @@ def poetry_env_name(directory: Path) -> Union[str, None]:
         return None
     name = name.lower()
     sanitized_name = re.sub(r'[ $`!*@"\\\r\n\t]', "_", name)[:42]
-    normalized_cwd = os.path.normcase(os.path.realpath(directory))
-    h_bytes = hashlib.sha256(normalized_cwd.encode()).digest()
-    h_str = base64.urlsafe_b64encode(h_bytes).decode()[:8]
-    return f"{sanitized_name}-{h_str}"
+    normalized_path = os.path.normcase(directory.resolve())
+    path_hash = hashlib.sha256(normalized_path.encode()).digest()
+    b64_hash = base64.urlsafe_b64encode(path_hash).decode()[:8]
+    return f"{sanitized_name}-{b64_hash}"
 
 
-def poetry_env_list_no_cli(directory: Path) -> List[Path]:
+def poetry_env_list(directory: Path) -> List[Path]:
     """Return list of poetry environments for the given directory."""
     if (cache_dir := poetry_cache_dir()) is None:
         return []

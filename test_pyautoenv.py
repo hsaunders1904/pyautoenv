@@ -64,6 +64,19 @@ def activate_venv(venv_dir: Union[str, Path]) -> None:
     os.environ["VIRTUAL_ENV"] = str(venv_dir)
 
 
+def make_poetry_env(
+    fs: FakeFilesystem,
+    name: str,
+    path: Path,
+) -> FakeFilesystem:
+    """Create a poetry project on the given file system."""
+    fs.create_file(path / "poetry.lock")
+    fs.create_file(path / "pyproject.toml").set_contents(
+        f'[tool.poetry]\nname = "{name}"\n',
+    )
+    return fs
+
+
 class TestVenv:
     PY_PROJ = Path("/python_project")
     VENV_DIR = PY_PROJ / ".venv"
@@ -153,7 +166,7 @@ class TestVenv:
         # create a poetry venv to switch into
         poetry_env = Path("poetry_proj-X-py3.8")
         poetry_env_mock.return_value = poetry_env
-        fs.create_file("/poetry_proj/poetry.lock")
+        fs = make_poetry_env(fs, "project", Path("/poetry_proj"))
         fs.create_file(poetry_env / activator)
 
         with mock.patch(OPERATING_SYSTEM, return_value=os_name):
@@ -229,7 +242,7 @@ class PoetryTester:
     def test_deactivate_and_activate_switching_to_new_poetry_env(self, fs):
         stdout = StringIO()
         activate_venv(self.VENV_DIR)
-        fs = self.make_poetry_env(fs, "pyproj2", Path("pyproj2"))
+        fs = make_poetry_env(fs, "pyproj2", Path("pyproj2"))
         new_venv = self.POETRY_DIR / "virtualenvs" / "pyproj2-NKNCcI25-py3.8"
         new_activate = new_venv / self.activator
         fs.create_file(new_activate)
@@ -244,18 +257,6 @@ class PoetryTester:
         assert pyautoenv.main([str(self.POETRY_PROJ)], stdout) == 0
         assert not stdout.getvalue()
 
-    @staticmethod
-    def make_poetry_env(
-        fs: FakeFilesystem,
-        name: str,
-        path: Path,
-    ) -> FakeFilesystem:
-        fs.create_file(path / "poetry.lock")
-        fs.create_file(path / "pyproject.toml").set_contents(
-            f'[tool.poetry]\nname = "{name}"\n',
-        )
-        return fs
-
 
 class TestPoetryWindows(PoetryTester):
     POETRY_DIR = (
@@ -266,7 +267,7 @@ class TestPoetryWindows(PoetryTester):
     @pytest.fixture(autouse=True)
     def fs(self, fs: FakeFilesystem) -> FakeFilesystem:
         """Create a mock filesystem for every test in this class."""
-        fs = self.make_poetry_env(fs, "python_project", self.POETRY_PROJ)
+        fs = make_poetry_env(fs, "python_project", self.POETRY_PROJ)
         fs.create_dir(self.POETRY_PROJ / "src")
         fs.create_dir(self.NOT_POETRY_DIR)
         fs.create_file(self.VENV_DIR / "Scripts" / "Activate.ps1")
@@ -296,7 +297,7 @@ class TestPoetryMacOs(PoetryTester):
     @pytest.fixture(autouse=True)
     def fs(self, fs: FakeFilesystem) -> FakeFilesystem:
         """Create a mock filesystem for every test in this class."""
-        fs = self.make_poetry_env(fs, "python_project", self.POETRY_PROJ)
+        fs = make_poetry_env(fs, "python_project", self.POETRY_PROJ)
         fs.create_dir(self.POETRY_PROJ / "src")
         fs.create_dir(self.NOT_POETRY_DIR)
         fs.create_file(self.VENV_DIR / "bin" / "activate")
@@ -322,7 +323,7 @@ class TestPoetryLinux(PoetryTester):
     @pytest.fixture(autouse=True)
     def fs(self, fs: FakeFilesystem) -> FakeFilesystem:
         """Create a mock filesystem for every test in this class."""
-        fs = self.make_poetry_env(fs, "python_project", self.POETRY_PROJ)
+        fs = make_poetry_env(fs, "python_project", self.POETRY_PROJ)
         fs.create_dir(self.POETRY_PROJ / "src")
         fs.create_dir(self.NOT_POETRY_DIR)
         fs.create_file(self.VENV_DIR / "bin" / "activate")
