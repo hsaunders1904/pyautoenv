@@ -59,12 +59,29 @@ def test_main_does_nothing_given_directory_does_not_exist():
     assert not stdout.getvalue()
 
 
+@pytest.mark.parametrize(
+    ("os_name", "enum_value"),
+    [
+        ("Linux", pyautoenv.Os.LINUX),
+        ("Darwin", pyautoenv.Os.MACOS),
+        ("Windows", pyautoenv.Os.WINDOWS),
+        ("Java", None),
+    ],
+)
+def test_operating_system_returns_enum_based_on_sys_platform(
+    os_name,
+    enum_value,
+):
+    with mock.patch("pyautoenv.platform.system", return_value=os_name):
+        assert pyautoenv.operating_system() == enum_value
+
+
 def activate_venv(venv_dir: Union[str, Path]) -> None:
     """Activate the venv at the given path."""
     os.environ["VIRTUAL_ENV"] = str(venv_dir)
 
 
-def make_poetry_env(
+def make_poetry_project(
     fs: FakeFilesystem,
     name: str,
     path: Path,
@@ -72,7 +89,12 @@ def make_poetry_env(
     """Create a poetry project on the given file system."""
     fs.create_file(path / "poetry.lock")
     fs.create_file(path / "pyproject.toml").set_contents(
-        f'[tool.poetry]\nname = "{name}"\n',
+        "[build-system]\n"
+        'requires = ["poetry-core>=1.0.0"]\n'
+        'build-backend = "poetry.core.masonry.api"\n'
+        "\n"
+        f"[tool.poetry]\n"
+        f'name = "{name}"\n',
     )
     return fs
 
@@ -166,7 +188,7 @@ class TestVenv:
         # create a poetry venv to switch into
         poetry_env = Path("poetry_proj-X-py3.8")
         poetry_env_mock.return_value = poetry_env
-        fs = make_poetry_env(fs, "project", Path("/poetry_proj"))
+        fs = make_poetry_project(fs, "project", Path("/poetry_proj"))
         fs.create_file(poetry_env / activator)
 
         with mock.patch(OPERATING_SYSTEM, return_value=os_name):
@@ -208,6 +230,10 @@ class PoetryTester:
         the path to the poetry virtual environment directory
     """
 
+    ACTIVATOR: Path
+    OS: pyautoenv.Os
+    POETRY_DIR: Path
+    VENV_DIR: Path
     NOT_POETRY_DIR = "not_a_poetry_project"
     POETRY_PROJ = Path("/python_project")
 
@@ -260,7 +286,7 @@ class PoetryTester:
     def test_deactivate_and_activate_switching_to_new_poetry_env(self, fs):
         stdout = StringIO()
         activate_venv(self.VENV_DIR)
-        fs = make_poetry_env(fs, "pyproj2", Path("pyproj2"))
+        fs = make_poetry_project(fs, "pyproj2", Path("pyproj2"))
         new_venv = self.POETRY_DIR / "virtualenvs" / "pyproj2-NKNCcI25-py3.8"
         new_activate = new_venv / self.ACTIVATOR
         fs.create_file(new_activate)
@@ -272,6 +298,60 @@ class PoetryTester:
         stdout = StringIO()
         # delete the activate script
         fs.remove(self.VENV_DIR / self.ACTIVATOR)
+
+        assert pyautoenv.main([str(self.POETRY_PROJ)], stdout) == 0
+        assert not stdout.getvalue()
+
+    def test_nothing_happens_given_poetry_cache_dir_does_not_exist(self, fs):
+        stdout = StringIO()
+        fs.remove_object(str(self.VENV_DIR))
+
+        assert pyautoenv.main([str(self.POETRY_PROJ)], stdout) == 0
+        assert not stdout.getvalue()
+
+    def test_poetry_cache_dir_env_var_used_if_set_and_dir_exists(self, fs):
+        stdout = StringIO()
+        fs = make_poetry_project(fs, "pyproj2", Path("pyproj2"))
+        new_venv_dir = Path("venv")
+        new_activator = (
+            new_venv_dir
+            / "virtualenvs"
+            / "pyproj2-NKNCcI25-py3.8"
+            / self.ACTIVATOR
+        )
+        fs.create_file(new_activator)
+        os.environ["POETRY_CACHE_DIR"] = str(new_venv_dir)
+
+        assert pyautoenv.main(["pyproj2"], stdout) == 0
+        assert stdout.getvalue() == f". {new_activator}"
+
+    def test_poetry_cache_dir_env_var_not_used_if_set_and_does_not_exist(self):
+        stdout = StringIO()
+        os.environ["POETRY_CACHE_DIR"] = "/not/a/dir"
+
+        assert pyautoenv.main([str(self.POETRY_PROJ)], stdout) == 0
+        assert stdout.getvalue() == f". {self.VENV_DIR / self.ACTIVATOR}"
+
+    def test_does_nothing_given_poetry_cache_dir_does_not_exist(self, fs):
+        stdout = StringIO()
+        fs.remove_object(str(self.POETRY_DIR))
+
+        assert pyautoenv.main([str(self.POETRY_PROJ)], stdout) == 0
+        assert not stdout.getvalue()
+
+    @pytest.mark.parametrize(
+        "pyproject_toml",
+        [
+            '[tool.poetry]\nnot_name = "proj"',
+            "[tool.poetry]\nname",
+        ],
+    )
+    def test_nothing_happens_given_name_cannot_be_parsed_from_pyproject(
+        self,
+        pyproject_toml,
+    ):
+        assert (self.POETRY_PROJ / "pyproject.toml").write_text(pyproject_toml)
+        stdout = StringIO()
 
         assert pyautoenv.main([str(self.POETRY_PROJ)], stdout) == 0
         assert not stdout.getvalue()
@@ -288,7 +368,7 @@ class TestPoetryWindows(PoetryTester):
     @pytest.fixture(autouse=True)
     def fs(self, fs: FakeFilesystem) -> FakeFilesystem:
         """Create a mock filesystem for every test in this class."""
-        fs = make_poetry_env(fs, "python_project", self.POETRY_PROJ)
+        fs = make_poetry_project(fs, "python_project", self.POETRY_PROJ)
         fs.create_dir(self.POETRY_PROJ / "src")
         fs.create_dir(self.NOT_POETRY_DIR)
         fs.create_file(self.VENV_DIR / "Scripts" / "Activate.ps1")
@@ -312,7 +392,7 @@ class TestPoetryMacOs(PoetryTester):
     @pytest.fixture(autouse=True)
     def fs(self, fs: FakeFilesystem) -> FakeFilesystem:
         """Create a mock filesystem for every test in this class."""
-        fs = make_poetry_env(fs, "python_project", self.POETRY_PROJ)
+        fs = make_poetry_project(fs, "python_project", self.POETRY_PROJ)
         fs.create_dir(self.POETRY_PROJ / "src")
         fs.create_dir(self.NOT_POETRY_DIR)
         fs.create_file(self.VENV_DIR / "bin" / "activate")
@@ -332,7 +412,7 @@ class TestPoetryLinux(PoetryTester):
     @pytest.fixture(autouse=True)
     def fs(self, fs: FakeFilesystem) -> FakeFilesystem:
         """Create a mock filesystem for every test in this class."""
-        fs = make_poetry_env(fs, "python_project", self.POETRY_PROJ)
+        fs = make_poetry_project(fs, "python_project", self.POETRY_PROJ)
         fs.create_dir(self.POETRY_PROJ / "src")
         fs.create_dir(self.NOT_POETRY_DIR)
         fs.create_file(self.VENV_DIR / "bin" / "activate")
