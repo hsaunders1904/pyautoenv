@@ -195,22 +195,40 @@ class PoetryTester:
 
     Inherit from this to test against different OSs, where different
     environment variables must be set and different paths are expected.
+
+    When inheriting you must set class-level variables:
+
+    * ACTIVATOR: Path
+        the relative path from the venv directory to the 'activate' script
+    * OS: pyautoenv.OS
+        the OS the test is for
+    * POETRY_DIR: Path
+        the path to the poetry project
+    * VENV_DIR: Path
+        the path to the poetry virtual environment directory
     """
 
     NOT_POETRY_DIR = "not_a_poetry_project"
     POETRY_PROJ = Path("/python_project")
 
+    def setup_method(self):
+        self.os_patch = mock.patch(OPERATING_SYSTEM, return_value=self.OS)
+        self.os_patch.start()
+
+    def teardown_method(self):
+        self.os_patch.stop()
+
     def test_activates_given_poetry_dir(self):
         stdout = StringIO()
 
         assert pyautoenv.main([str(self.POETRY_PROJ)], stdout) == 0
-        assert stdout.getvalue() == f". {self.VENV_DIR / self.activator}"
+        assert stdout.getvalue() == f". {self.VENV_DIR / self.ACTIVATOR}"
 
     def test_activates_given_poetry_dir_in_parent(self):
         stdout = StringIO()
 
         assert pyautoenv.main(["python_project/src"], stdout) == 0
-        assert stdout.getvalue() == f". {self.VENV_DIR / self.activator}"
+        assert stdout.getvalue() == f". {self.VENV_DIR / self.ACTIVATOR}"
 
     def test_nothing_happens_given_not_venv_dir_and_not_active(self):
         stdout = StringIO()
@@ -244,7 +262,7 @@ class PoetryTester:
         activate_venv(self.VENV_DIR)
         fs = make_poetry_env(fs, "pyproj2", Path("pyproj2"))
         new_venv = self.POETRY_DIR / "virtualenvs" / "pyproj2-NKNCcI25-py3.8"
-        new_activate = new_venv / self.activator
+        new_activate = new_venv / self.ACTIVATOR
         fs.create_file(new_activate)
 
         assert pyautoenv.main(["pyproj2"], stdout=stdout) == 0
@@ -253,14 +271,17 @@ class PoetryTester:
     def test_does_nothing_if_activate_script_is_not_file(self, fs):
         stdout = StringIO()
         # delete the activate script
-        fs.remove(self.VENV_DIR / self.activator)
+        fs.remove(self.VENV_DIR / self.ACTIVATOR)
+
         assert pyautoenv.main([str(self.POETRY_PROJ)], stdout) == 0
         assert not stdout.getvalue()
 
 
 class TestPoetryWindows(PoetryTester):
+    ACTIVATOR = Path("Scripts") / "Activate.ps1"
+    OS = pyautoenv.Os.WINDOWS
     POETRY_DIR = (
-        Path("C") / "Users" / "username" / "AppData" / "Local" / "pypoetry"
+        Path("C") / "Users" / "user" / "AppData" / "Local" / "pypoetry"
     )
     VENV_DIR = POETRY_DIR / "virtualenvs" / "python_project-frtSrewI-py3.11"
 
@@ -274,23 +295,17 @@ class TestPoetryWindows(PoetryTester):
         return fs
 
     def setup_method(self):
+        super().setup_method()
         os.environ = {  # noqa: B003
-            "LOCALAPPDATA": "C/Users/username/AppData/Local",
+            "LOCALAPPDATA": "C/Users/user/AppData/Local",
         }
-        self.activator = "Scripts/Activate.ps1"
-        self.os_patch = mock.patch(
-            OPERATING_SYSTEM,
-            return_value=pyautoenv.Os.WINDOWS,
-        )
-        self.os_patch.start()
-
-    def teardown_method(self):
-        self.os_patch.stop()
 
 
 class TestPoetryMacOs(PoetryTester):
+    ACTIVATOR = Path("bin") / "activate"
+    OS = pyautoenv.Os.MACOS
     POETRY_DIR = (
-        Path("/Users") / "username" / "Library" / "Caches" / "pypoetry"
+        Path("/") / "Users" / "user" / "Library" / "Caches" / "pypoetry"
     )
     VENV_DIR = POETRY_DIR / "virtualenvs" / "python_project-frtSrewI-py3.11"
 
@@ -304,20 +319,14 @@ class TestPoetryMacOs(PoetryTester):
         return fs
 
     def setup_method(self):
-        os.environ = {"HOME": "/Users/username/"}  # noqa: B003
-        self.activator = "bin/activate"
-        self.os_patch = mock.patch(
-            OPERATING_SYSTEM,
-            return_value=pyautoenv.Os.MACOS,
-        )
-        self.os_patch.start()
-
-    def teardown_method(self):
-        self.os_patch.stop()
+        super().setup_method()
+        os.environ = {"HOME": "/Users/user/"}  # noqa: B003
 
 
 class TestPoetryLinux(PoetryTester):
-    POETRY_DIR = Path("/Users") / "username" / ".cache" / "pypoetry"
+    ACTIVATOR = Path("bin") / "activate"
+    OS = pyautoenv.Os.LINUX
+    POETRY_DIR = Path("/") / "Users" / "user" / ".cache" / "pypoetry"
     VENV_DIR = POETRY_DIR / "virtualenvs" / "python_project-frtSrewI-py3.11"
 
     @pytest.fixture(autouse=True)
@@ -330,13 +339,5 @@ class TestPoetryLinux(PoetryTester):
         return fs
 
     def setup_method(self):
-        os.environ = {"HOME": "/Users/username/"}  # noqa: B003
-        self.activator = "bin/activate"
-        self.os_patch = mock.patch(
-            OPERATING_SYSTEM,
-            return_value=pyautoenv.Os.LINUX,
-        )
-        self.os_patch.start()
-
-    def teardown_method(self):
-        self.os_patch.stop()
+        super().setup_method()
+        os.environ = {"HOME": "/Users/user/"}  # noqa: B003
