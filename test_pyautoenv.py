@@ -26,11 +26,6 @@ from pyfakefs.fake_filesystem import FakeFilesystem
 import pyautoenv
 
 OPERATING_SYSTEM = "pyautoenv.operating_system"
-OS_NAME_ACTIVATORS = [
-    (pyautoenv.Os.WINDOWS, "Scripts/Activate.ps1"),
-    (pyautoenv.Os.LINUX, "bin/activate"),
-    (pyautoenv.Os.MACOS, "bin/activate"),
-]
 
 
 def test_parse_args_directory_is_cwd_by_default():
@@ -102,6 +97,11 @@ def make_poetry_project(
 
 
 class TestVenv:
+    OS_NAME_ACTIVATORS = [
+        (pyautoenv.Os.WINDOWS, "Scripts/Activate.ps1"),
+        (pyautoenv.Os.LINUX, "bin/activate"),
+        (pyautoenv.Os.MACOS, "bin/activate"),
+    ]
     PY_PROJ = Path("/python_project")
     VENV_DIR = PY_PROJ / ".venv"
 
