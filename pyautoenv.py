@@ -238,6 +238,9 @@ def poetry_project_name(directory: Path) -> Union[str, None]:
             pyproject = f.readlines()
     except OSError:
         return None
+    # Ideally we'd use a proper TOML parser to do this, but there isn't
+    # one available in the standard library until Python 3.11. This
+    # hacked together parser should work for the vast majority of cases.
     in_tool_poetry = False
     for line in pyproject:
         if line.strip() == "[tool.poetry]":
