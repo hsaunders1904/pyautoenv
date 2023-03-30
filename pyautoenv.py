@@ -50,35 +50,20 @@ class Os(enum.Enum):
     WINDOWS = enum.auto()
 
 
-class EnvType(enum.Enum):
-    """Types of virtual environments."""
-
-    POETRY = enum.auto()
-    VENV = enum.auto()
-
-
-@dataclass
-class Env:
-    """Container for virtual environment information."""
-
-    directory: Path
-    env_type: EnvType
-
-
 def main(sys_args: List[str], stdout: TextIO) -> int:
     """Write commands to activate/deactivate environments."""
     args = parse_args(sys_args)
     if not args.directory.is_dir():
         return 1
-    new_env = discover_env(args.directory)
+    new_env_path = discover_env(args.directory)
     if active_env_path := os.environ.get("VIRTUAL_ENV", None):
-        if not new_env:
+        if not new_env_path:
             stdout.write("deactivate")
-        elif not new_env.directory.samefile(active_env_path):
+        elif not new_env_path.samefile(active_env_path):
             stdout.write("deactivate")
-            if activate := env_activation_path(new_env):
+            if activate := env_activation_path(new_env_path):
                 stdout.write(f" && . {activate}")
-    elif new_env and (activate := env_activation_path(new_env)):
+    elif new_env_path and (activate := env_activation_path(new_env_path)):
         stdout.write(f". {activate}")
     return 0
 
@@ -106,21 +91,21 @@ def parse_args(sys_args: List[str]) -> CliArgs:
     return CliArgs(**vars(args))
 
 
-def discover_env(directory: Path) -> Union[Env, None]:
+def discover_env(directory: Path) -> Union[Path, None]:
     """Find an environment in the given directory or any of its parents."""
     while directory != directory.parent:
-        if env := get_virtual_env(directory):
-            return env
+        if env_dir := get_virtual_env(directory):
+            return env_dir
         directory = directory.parent
     return None
 
 
-def get_virtual_env(directory: Path) -> Union[Env, None]:
+def get_virtual_env(directory: Path) -> Union[Path, None]:
     """Return the environment if defined in the given directory."""
     if has_venv(directory):
-        return Env(directory=directory / ".venv", env_type=EnvType.VENV)
+        return directory / ".venv"
     if has_poetry_env(directory) and (env_path := poetry_env_path(directory)):
-        return Env(directory=env_path, env_type=EnvType.POETRY)
+        return env_path
     return None
 
 
@@ -130,12 +115,12 @@ def has_venv(directory: Path) -> bool:
     return candidate_path.is_file()
 
 
-def env_activation_path(env: Env) -> Union[Path, None]:
+def env_activation_path(env_dir: Path) -> Union[Path, None]:
     """Get the path to the activation script for the environment."""
     if operating_system() is Os.WINDOWS:
-        if (path := env.directory / "Scripts" / "Activate.ps1").is_file():
+        if (path := env_dir / "Scripts" / "Activate.ps1").is_file():
             return path
-    elif (path := env.directory / "bin" / "activate").is_file():
+    elif (path := env_dir / "bin" / "activate").is_file():
         return path
     return None
 
