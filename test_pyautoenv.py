@@ -93,8 +93,10 @@ def make_poetry_project(
         'requires = ["poetry-core>=1.0.0"]\n'
         'build-backend = "poetry.core.masonry.api"\n'
         "\n"
-        f"[tool.poetry]\n"
-        f'name = "{name}"\n',
+        "[tool.poetry]\n"
+        'names = "not this one!"\n'
+        f'name = "{name}"\n'
+        'version = "0.2.0"\n',
     )
     return fs
 
@@ -342,8 +344,15 @@ class PoetryTester:
     @pytest.mark.parametrize(
         "pyproject_toml",
         [
-            '[tool.poetry]\nnot_name = "proj"',
+            '[tool.poetry]\nnot_name = "python_project"',
             "[tool.poetry]\nname",
+            (
+                "[tool.poetry]\n"
+                'version = "0.2.0"\n'
+                "\n"
+                "[tool.black]\n"
+                'name = "python_project"\n'
+            ),
         ],
     )
     def test_nothing_happens_given_name_cannot_be_parsed_from_pyproject(

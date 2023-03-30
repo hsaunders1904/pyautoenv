@@ -252,9 +252,12 @@ def poetry_project_name(directory: Path) -> Union[str, None]:
     for line in pyproject:
         if line.strip() == "[tool.poetry]":
             in_tool_poetry = True
+            continue
+        if line.strip().startswith("["):
+            in_tool_poetry = False
         if not in_tool_poetry:
             continue
-        if line.startswith("name"):
+        if re.match(r'name *= * ".*"', line.strip()):
             try:
                 return line.split("=")[1].strip().strip('"')
             except IndexError:
