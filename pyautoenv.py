@@ -140,7 +140,12 @@ def has_poetry_env(directory: Path) -> bool:
 
 
 def poetry_env_path(directory: Path) -> Union[Path, None]:
-    """Return the path of the venv associated with a poetry project directory."""
+    """
+    Return the path of the venv associated with a poetry project directory.
+
+    If there are multiple poetry environments, pick the one with the
+    latest modification time.
+    """
     if env_list := poetry_env_list(directory):
         return max(env_list, key=lambda p: p.stat().st_mtime)
     return None
@@ -242,11 +247,9 @@ def poetry_project_name(directory: Path) -> Union[str, None]:
             in_tool_poetry = False
         if not in_tool_poetry:
             continue
-        if re.match(r'name *= * ".*"', line.strip()):
-            try:
-                return line.split("=")[1].strip().strip('"')
-            except IndexError:
-                continue
+        re_match = re.match(r'[ \t]*name *= * "(.+)"[ \t]*', line)
+        if re_match and (name := re_match.group(1)):
+            return name
     return None
 
 
