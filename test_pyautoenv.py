@@ -29,22 +29,23 @@ OPERATING_SYSTEM = "pyautoenv.operating_system"
 
 
 def test_parse_args_directory_is_cwd_by_default():
-    args = pyautoenv.parse_args([])
+    directory = pyautoenv.parse_args([])
 
-    assert args.directory == Path.cwd()
+    assert directory == Path.cwd()
 
 
 def test_parse_args_directory_is_set():
-    args = pyautoenv.parse_args(["/some/dir"])
+    directory = pyautoenv.parse_args(["/some/dir"])
 
-    assert args.directory == Path("/some/dir")
+    assert directory == Path("/some/dir")
 
 
 def test_parse_args_version_prints_version_and_exits(capsys):
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit) as sys_exit:
         pyautoenv.parse_args(["--version"])
     stdout = capsys.readouterr().out
     assert re.match(r"pyautoenv [0-9]+\.[0-9]+\.[0-9](\.\w+)?\n", stdout)
+    assert sys_exit.value.code == 0
 
 
 def test_main_does_nothing_given_directory_does_not_exist():
@@ -89,9 +90,20 @@ def make_poetry_project(
         'build-backend = "poetry.core.masonry.api"\n'
         "\n"
         "[tool.poetry]\n"
+        "# comment\n"
         'names = "not this one!"\n'
         f'name = "{name}"\n'
-        'version = "0.2.0"\n',
+        'version = "0.2.0"\n'
+        "some_list = [\n"
+        "    'val1',\n"
+        "    'val2',\n"
+        "]\n"
+        "\n"
+        "[tool.ruff]\n"
+        "select = [\n"
+        '    "F",\n'
+        '    "W",\n'
+        "]\n",
     )
     return fs
 

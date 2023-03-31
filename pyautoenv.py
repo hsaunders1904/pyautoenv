@@ -20,26 +20,16 @@ Print a command to activate or deactivate a Python venv based on a directory.
 Supports environments managed by venv and poetry.
 """
 
-import argparse
 import base64
 import enum
 import hashlib
 import os
 import platform
-import re
-from dataclasses import dataclass
+import sys
 from pathlib import Path
 from typing import List, TextIO, Union
 
 __version__ = "0.2.0"
-
-
-@dataclass
-class CliArgs:
-    """Command line arguments for the script."""
-
-    directory: Path
-    """Directory to look for a python environment in."""
 
 
 class Os(enum.Enum):
@@ -52,10 +42,10 @@ class Os(enum.Enum):
 
 def main(sys_args: List[str], stdout: TextIO) -> int:
     """Write commands to activate/deactivate environments."""
-    args = parse_args(sys_args)
-    if not args.directory.is_dir():
+    directory = parse_args(sys_args)
+    if not directory.is_dir():
         return 1
-    new_env_path = discover_env(args.directory)
+    new_env_path = discover_env(directory)
     if active_env_path := os.environ.get("VIRTUAL_ENV", None):
         if not new_env_path:
             stdout.write("deactivate")
@@ -68,27 +58,23 @@ def main(sys_args: List[str], stdout: TextIO) -> int:
     return 0
 
 
-def parse_args(sys_args: List[str]) -> CliArgs:
-    """Parse the sequence of command line arguments."""
-    parser = argparse.ArgumentParser(
-        description=__doc__,
-        formatter_class=argparse.RawTextHelpFormatter,
-    )
-    parser.add_argument(
-        "directory",
-        type=lambda p: Path(p).resolve(),
-        help="the path to look in for a python environment",
-        default=Path.cwd(),
-        nargs="?",
-    )
-    parser.add_argument(
-        "-V",
-        "--version",
-        action="version",
-        version=f"pyautoenv {__version__}",
-    )
-    args = parser.parse_args(sys_args)
-    return CliArgs(**vars(args))
+def parse_args(sys_args: List[str]) -> Path:
+    """
+    Parse the sequence of command line arguments.
+
+    Using argparse is slower than I like.
+    """
+    if len(sys_args) == 0:
+        return Path.cwd()
+    if len(sys_args) > 1:
+        sys.stderr.write(
+            f"pyautoenv: unexpected argument(s) {str(sys_args[1:])[1:-1]}\n",
+        )
+        sys.exit(1)
+    if sys_args[0] in ["-V", "--version"]:
+        sys.stdout.write(f"pyautoenv {__version__}\n")
+        sys.exit(0)
+    return Path(sys_args[0]).resolve()
 
 
 def discover_env(directory: Path) -> Union[Path, None]:
@@ -134,9 +120,7 @@ def venv_path(directory: Path) -> Path:
 
 def has_poetry_env(directory: Path) -> bool:
     """Return true if a poetry env exists in the given directory."""
-    return (directory / "poetry.lock").is_file() and (
-        directory / "pyproject.toml"
-    ).is_file()
+    return (directory / "poetry.lock").is_file()
 
 
 def poetry_env_path(directory: Path) -> Union[Path, None]:
@@ -184,25 +168,19 @@ def poetry_cache_dir() -> Union[Path, None]:
 def linux_poetry_cache_dir() -> Union[Path, None]:
     """Return the poetry cache directory for Linux."""
     xdg_cache = os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache"))
-    if (cache_dir := Path(xdg_cache) / "pypoetry").is_dir():
-        return cache_dir
-    return None
+    return Path(xdg_cache) / "pypoetry"
 
 
-def macos_poetry_cache_dir() -> Union[Path, None]:
+def macos_poetry_cache_dir() -> Path:
     """Return the poetry cache directory for MacOS."""
-    cache_dir = Path.home() / "Library" / "Caches" / "pypoetry"
-    if cache_dir.is_dir():
-        return cache_dir
-    return None
+    return Path.home() / "Library" / "Caches" / "pypoetry"
 
 
 def windows_poetry_cache_dir() -> Union[Path, None]:
     """Return the poetry cache directory for Windows."""
-    app_data = os.environ.get("LOCALAPPDATA", None)
-    if app_data and (cache_dir := Path(app_data) / "pypoetry").is_dir():
-        return cache_dir
-    return None
+    if not (app_data := os.environ.get("LOCALAPPDATA", None)):
+        return None
+    return Path(app_data) / "pypoetry"
 
 
 def poetry_env_name(directory: Path) -> Union[str, None]:
@@ -215,7 +193,16 @@ def poetry_env_name(directory: Path) -> Union[str, None]:
     if (name := poetry_project_name(directory)) is None:
         return None
     name = name.lower()
-    sanitized_name = re.sub(r'[ $`!*@"\\\r\n\t]', "_", name)[:42]
+    sanitized_name = (
+        name.replace(" ", "_")
+        .replace("$", "_")
+        .replace("*", "_")
+        .replace("@", "_")
+        .replace("\\", "_")
+        .replace("\r", "_")
+        .replace("\n", "_")
+        .replace("\t", "_")
+    )
     normalized_path = os.path.normcase(directory.resolve())
     path_hash = hashlib.sha256(normalized_path.encode()).digest()
     b64_hash = base64.urlsafe_b64encode(path_hash).decode()[:8]
@@ -250,15 +237,16 @@ def poetry_project_name(directory: Path) -> Union[str, None]:
             in_tool_poetry = False
         if not in_tool_poetry:
             continue
-        re_match = re.match(r'[ \t]*name *= * "(.+)"[ \t]*', line)
-        if re_match and (name := re_match.group(1)):
-            return name
+        try:
+            key, val = (part.strip().strip('"') for part in line.split("="))
+        except ValueError:
+            continue
+        if key == "name":
+            return val
     return None
 
 
 if __name__ == "__main__":
-    import sys
-
     try:
         exit_code = main(sys.argv[1:], sys.stdout)
     except Exception as exc:  # noqa: BLE001
