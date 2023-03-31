@@ -58,23 +58,23 @@ def main(sys_args: List[str], stdout: TextIO) -> int:
     return 0
 
 
-def parse_args(sys_args: List[str]) -> Path:
+def parse_args(argv: List[str]) -> Path:
     """
     Parse the sequence of command line arguments.
 
     Using argparse is slower than I like.
     """
-    if len(sys_args) == 0:
+    if len(argv) == 0:
         return Path.cwd()
-    if len(sys_args) > 1:
+    if len(argv) > 1:
         sys.stderr.write(
-            f"pyautoenv: unexpected argument(s) {str(sys_args[1:])[1:-1]}\n",
+            f"pyautoenv: error: exactly one argument expected, found {len(argv)}\n",
         )
         sys.exit(1)
-    if sys_args[0] in ["-V", "--version"]:
+    if argv[0] in ["-V", "--version"]:
         sys.stdout.write(f"pyautoenv {__version__}\n")
         sys.exit(0)
-    return Path(sys_args[0]).resolve()
+    return Path(argv[0]).resolve()
 
 
 def discover_env(directory: Path) -> Union[Path, None]:
@@ -253,6 +253,6 @@ if __name__ == "__main__":
     try:
         exit_code = main(sys.argv[1:], sys.stdout)
     except Exception as exc:  # noqa: BLE001
-        sys.stderr.write(f"pyautoenv: {exc}\n")
+        sys.stderr.write(f"pyautoenv: error: {exc}\n")
         sys.exit(1)
     sys.exit(exit_code)
