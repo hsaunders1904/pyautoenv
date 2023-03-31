@@ -21,14 +21,17 @@ Supports environments managed by venv and poetry.
 """
 
 import argparse
+import base64
 import enum
+import hashlib
 import os
-import subprocess
+import platform
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, TextIO, Union
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 
 @dataclass
@@ -39,35 +42,28 @@ class CliArgs:
     """Directory to look for a python environment in."""
 
 
-class EnvType(enum.Enum):
-    """Types of virtual environments."""
+class Os(enum.Enum):
+    """Supported OS names."""
 
-    POETRY = enum.auto()
-    VENV = enum.auto()
-
-
-@dataclass
-class Env:
-    """Container for virtual environment information."""
-
-    directory: Path
-    env_type: EnvType
+    LINUX = enum.auto()
+    MACOS = enum.auto()
+    WINDOWS = enum.auto()
 
 
 def main(sys_args: List[str], stdout: TextIO) -> int:
-    """Activate environment if it exists in the given directory."""
+    """Write commands to activate/deactivate environments."""
     args = parse_args(sys_args)
     if not args.directory.is_dir():
         return 1
-    new_env = discover_env(args.directory)
+    new_env_path = discover_env(args.directory)
     if active_env_path := os.environ.get("VIRTUAL_ENV", None):
-        if not new_env:
+        if not new_env_path:
             stdout.write("deactivate")
-        elif not new_env.directory.samefile(active_env_path):
+        elif not new_env_path.samefile(active_env_path):
             stdout.write("deactivate")
-            if activate := env_activate_path(new_env):
+            if activate := env_activation_path(new_env_path):
                 stdout.write(f" && . {activate}")
-    elif new_env and (activate := env_activate_path(new_env)):
+    elif new_env_path and (activate := env_activation_path(new_env_path)):
         stdout.write(f". {activate}")
     return 0
 
@@ -80,7 +76,7 @@ def parse_args(sys_args: List[str]) -> CliArgs:
     )
     parser.add_argument(
         "directory",
-        type=Path,
+        type=lambda p: Path(p).resolve(),
         help="the path to look in for a python environment",
         default=Path.cwd(),
         nargs="?",
@@ -95,96 +91,169 @@ def parse_args(sys_args: List[str]) -> CliArgs:
     return CliArgs(**vars(args))
 
 
-def discover_env(directory: Path) -> Union[Env, None]:
-    """Find an environment in the given directory, or any of its parents."""
+def discover_env(directory: Path) -> Union[Path, None]:
+    """Find an environment in the given directory or any of its parents."""
     while directory != directory.parent:
-        if env := check_env(directory):
-            return env
+        if env_dir := get_virtual_env(directory):
+            return env_dir
         directory = directory.parent
     return None
 
 
-def check_env(directory: Path) -> Union[Env, None]:
-    """Return true if an environment exists in the given directory."""
-    if check_venv(directory):
-        return Env(directory=directory / ".venv", env_type=EnvType.VENV)
-    if check_poetry(directory) and (env_path := poetry_env_path(directory)):
-        return Env(directory=env_path, env_type=EnvType.POETRY)
+def get_virtual_env(directory: Path) -> Union[Path, None]:
+    """Return the environment if defined in the given directory."""
+    if has_venv(directory):
+        return directory / ".venv"
+    if has_poetry_env(directory) and (env_path := poetry_env_path(directory)):
+        return env_path
     return None
 
 
-def check_venv(directory: Path) -> bool:
+def has_venv(directory: Path) -> bool:
     """Return true if a venv exists in the given directory."""
     candidate_path = venv_path(directory)
     return candidate_path.is_file()
 
 
-def env_activate_path(env: Env) -> Union[Path, None]:
+def env_activation_path(env_dir: Path) -> Union[Path, None]:
     """Get the path to the activation script for the environment."""
-    if is_windows():
-        if (path := env.directory / "Scripts" / "Activate.ps1").is_file():
+    if operating_system() is Os.WINDOWS:
+        if (path := env_dir / "Scripts" / "Activate.ps1").is_file():
             return path
-    elif (path := env.directory / "bin" / "activate").is_file():
+    elif (path := env_dir / "bin" / "activate").is_file():
         return path
     return None
 
 
 def venv_path(directory: Path) -> Path:
     """Get the path to the activate script for a venv."""
-    if is_windows():
+    if operating_system() is Os.WINDOWS:
         return directory / ".venv" / "Scripts" / "Activate.ps1"
     return directory / ".venv" / "bin" / "activate"
 
 
-def check_poetry(directory: Path) -> bool:
+def has_poetry_env(directory: Path) -> bool:
     """Return true if a poetry env exists in the given directory."""
-    candidate_path = directory.joinpath("poetry.lock")
-    return candidate_path.is_file()
+    return (directory / "poetry.lock").is_file() and (
+        directory / "pyproject.toml"
+    ).is_file()
 
 
 def poetry_env_path(directory: Path) -> Union[Path, None]:
     """
     Return the path of the venv associated with a poetry project directory.
 
-    Note that there may be more than one poetry environment associated with
-    a poetry project directory. We first take whichever env is 'Activated',
-    as given by 'poetry env list --full-path'. If that doesn't work, take
-    the first path that exists, or return None if none do.
+    If there are multiple poetry environments, pick the one with the
+    latest modification time.
     """
-    if env_list := poetry_env_list_path(directory):
-        for env_path in env_list:
-            if (
-                env_path.endswith(" (Activated)")
-                and (path := Path(env_path[:-12])).is_dir()
-            ):
-                return path
-        for env_path in env_list:
-            if (path := Path(env_path)).is_dir():
-                return path
+    if env_list := poetry_env_list(directory):
+        return max(env_list, key=lambda p: p.stat().st_mtime)
     return None
 
 
-def poetry_env_list_path(directory: Path) -> Union[List[str], None]:
-    """Try to get a list of poetry environments for a given directory."""
-    try:
-        return poetry_env_list_path_subprocess(directory).strip().split("\n")
-    except (subprocess.CalledProcessError, FileNotFoundError):
+def operating_system() -> Union[Os, None]:
+    """
+    Return the operating system the script's being run on.
+
+    Return 'None' if we're on an operating system we can't handle.
+    """
+    platform_sys = platform.system()
+    if platform_sys == "Darwin":
+        return Os.MACOS
+    if platform_sys == "Windows":
+        return Os.WINDOWS
+    if platform_sys == "Linux":
+        return Os.LINUX
+    return None
+
+
+def poetry_cache_dir() -> Union[Path, None]:
+    """Return the poetry cache directory, or None if it's not found."""
+    cache_dir_str = os.environ.get("POETRY_CACHE_DIR", None)
+    if cache_dir_str and (cache_dir := Path(cache_dir_str)).is_dir():
+        return cache_dir
+    if operating_system() is Os.WINDOWS:
+        return windows_poetry_cache_dir()
+    if operating_system() is Os.MACOS:
+        return macos_poetry_cache_dir()
+    if operating_system() is Os.LINUX:
+        return linux_poetry_cache_dir()
+    return None
+
+
+def linux_poetry_cache_dir() -> Union[Path, None]:
+    """Return the poetry cache directory for Linux."""
+    xdg_cache = os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache"))
+    if (cache_dir := Path(xdg_cache) / "pypoetry").is_dir():
+        return cache_dir
+    return None
+
+
+def macos_poetry_cache_dir() -> Union[Path, None]:
+    """Return the poetry cache directory for MacOS."""
+    cache_dir = Path.home() / "Library" / "Caches" / "pypoetry"
+    if cache_dir.is_dir():
+        return cache_dir
+    return None
+
+
+def windows_poetry_cache_dir() -> Union[Path, None]:
+    """Return the poetry cache directory for Windows."""
+    app_data = os.environ.get("LOCALAPPDATA", None)
+    if app_data and (cache_dir := Path(app_data) / "pypoetry").is_dir():
+        return cache_dir
+    return None
+
+
+def poetry_env_name(directory: Path) -> Union[str, None]:
+    """
+    Get the name of the poetry environment defined in the given directory.
+
+    Logic comes from the poetry source code:
+    https://github.com/python-poetry/poetry/blob/2b15ce10f02b0c6347fe2f12ae902488edeaaf7c/src/poetry/utils/env.py#L1207.
+    """
+    if (name := poetry_project_name(directory)) is None:
         return None
+    name = name.lower()
+    sanitized_name = re.sub(r'[ $`!*@"\\\r\n\t]', "_", name)[:42]
+    normalized_path = os.path.normcase(directory.resolve())
+    path_hash = hashlib.sha256(normalized_path.encode()).digest()
+    b64_hash = base64.urlsafe_b64encode(path_hash).decode()[:8]
+    return f"{sanitized_name}-{b64_hash}"
 
 
-def poetry_env_list_path_subprocess(cwd: Path) -> str:
-    """Run 'poetry env list --full-path' and return the output."""
-    return subprocess.run(
-        ["poetry", "env", "list", "--full-path"],
-        cwd=cwd,
-        capture_output=True,
-        check=True,
-    ).stdout.decode()
+def poetry_env_list(directory: Path) -> List[Path]:
+    """Return list of poetry environments for the given directory."""
+    if (cache_dir := poetry_cache_dir()) is None:
+        return []
+    if (env_name := poetry_env_name(directory)) is None:
+        return []
+    return list((cache_dir / "virtualenvs").glob(f"{env_name}-py*"))
 
 
-def is_windows() -> bool:
-    """Return True if the OS running the script is Windows."""
-    return os.name == "nt"
+def poetry_project_name(directory: Path) -> Union[str, None]:
+    """Parse the poetry project name from the given directory."""
+    try:
+        with (directory / "pyproject.toml").open() as f:
+            pyproject = f.readlines()
+    except OSError:
+        return None
+    # Ideally we'd use a proper TOML parser to do this, but there isn't
+    # one available in the standard library until Python 3.11. This
+    # hacked together parser should work for the vast majority of cases.
+    in_tool_poetry = False
+    for line in pyproject:
+        if line.strip() == "[tool.poetry]":
+            in_tool_poetry = True
+            continue
+        if line.strip().startswith("["):
+            in_tool_poetry = False
+        if not in_tool_poetry:
+            continue
+        re_match = re.match(r'[ \t]*name *= * "(.+)"[ \t]*', line)
+        if re_match and (name := re_match.group(1)):
+            return name
+    return None
 
 
 if __name__ == "__main__":

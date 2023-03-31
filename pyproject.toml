@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "pyautoenv"
-version = "0.1.0"
+version = "0.2.0"
 description = "Print a command to activate or deactivate a Python venv based on a directory."
 authors = ["Harry Saunders <33317174+hsaunders1904@users.noreply.github.com>"]
 license = "GPL-3"
@@ -86,7 +86,9 @@ ignore = [
 ]
 unfixable = [
   # do not auto-remove commented out code
-  "ERA001"
+  "ERA001",
+  # do not auto-remove unused variables
+  "F841",
 ]
 
 [tool.ruff.per-file-ignores]
