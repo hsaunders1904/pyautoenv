@@ -12,22 +12,29 @@ a directory that defines an environment
 contains `.venv/` or `poetry.lock`).
 Environments are automatically deactivated when you leave the directory.
 
+Note that you must have Python >= 3.8 on your path for the plugin to work.
+
 ## Install
 
 Follow the installation instructions for your favourite shell.
 
 ### Zsh
 
-To install the ZSH plugin, you'll need [oh-my-zsh](https://ohmyz.sh/).
-Clone this repo into `~/.oh-my-zsh/plugins` or into `${ZSH_CUSTOM}/plugins`.
-Then add `pyautoenv` to your list of enabled plugins in `.zshrc`, e.g.,
+If you're using [oh-my-zsh](https://ohmyz.sh/),
+clone this repo into `~/.oh-my-zsh/plugins` or `${ZSH_CUSTOM}/plugins`.
+Then add `pyautoenv` to the list of enabled plugins in your `.zshrc`:
 
 ```zsh
 plugins( pyautoenv )
 ```
 
-Note that you must have Python >= 3.8 on your path for the plugin to work.
+If you're not using `oh-my-zsh`, `source` the `pyautoenv.plugin.zsh` script.
 
+```zsh
+source pyauotenv.plugin.zsh
+```
+
+Add this to your `.zshrc` to activate the application permanently.
 
 ### Bash
 
