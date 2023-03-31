@@ -1,5 +1,8 @@
 # pyautoenv
 
+[![Build Status](https://github.com/hsaunders1904/pyautoenv/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/hsaunders1904/pyautoenv/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/hsaunders1904/pyautoenv/branch/main/graph/badge.svg?token=YABNBQOS1S)](https://codecov.io/gh/hsaunders1904/pyautoenv)
+
 Automatically activate and deactivate Python environments
 as you move around the file system.
 
