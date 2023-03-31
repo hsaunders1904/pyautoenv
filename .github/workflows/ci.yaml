@@ -24,3 +24,5 @@ jobs:
         python -m pip install poetry
         poetry install --with=test
         poetry run pytest --cov --cov-report=term-missing
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
