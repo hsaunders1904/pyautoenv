@@ -26,3 +26,5 @@ jobs:
         poetry run pytest --cov --cov-report=term-missing
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
+      with:
+          token: ${{ secrets.CODECOV_TOKEN }}
