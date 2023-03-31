@@ -177,8 +177,11 @@ def poetry_env_name(directory: Path) -> Union[str, None]:
         return None
     name = name.lower()
     sanitized_name = (
+        # This is a bit ugly, but it's more performant than using a regex
         name.replace(" ", "_")
         .replace("$", "_")
+        .replace("`", "_")
+        .replace("!", "_")
         .replace("*", "_")
         .replace("@", "_")
         .replace("\\", "_")
