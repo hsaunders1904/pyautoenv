@@ -96,19 +96,9 @@ def get_virtual_env(directory: Path) -> Union[Path, None]:
 
 
 def has_venv(directory: Path) -> bool:
-    """Return true if a venv exists in the given directory."""
+    """Return true if the given directory is venv project directory."""
     candidate_path = venv_path(directory)
     return candidate_path.is_file()
-
-
-def env_activation_path(env_dir: Path) -> Union[Path, None]:
-    """Get the path to the activation script for the environment."""
-    if operating_system() is Os.WINDOWS:
-        if (path := env_dir / "Scripts" / "Activate.ps1").is_file():
-            return path
-    elif (path := env_dir / "bin" / "activate").is_file():
-        return path
-    return None
 
 
 def venv_path(directory: Path) -> Path:
@@ -119,7 +109,7 @@ def venv_path(directory: Path) -> Path:
 
 
 def has_poetry_env(directory: Path) -> bool:
-    """Return true if a poetry env exists in the given directory."""
+    """Return true if a the given directory is a poetry project."""
     return (directory / "poetry.lock").is_file()
 
 
@@ -135,20 +125,13 @@ def poetry_env_path(directory: Path) -> Union[Path, None]:
     return None
 
 
-def operating_system() -> Union[Os, None]:
-    """
-    Return the operating system the script's being run on.
-
-    Return 'None' if we're on an operating system we can't handle.
-    """
-    platform_sys = platform.system()
-    if platform_sys == "Darwin":
-        return Os.MACOS
-    if platform_sys == "Windows":
-        return Os.WINDOWS
-    if platform_sys == "Linux":
-        return Os.LINUX
-    return None
+def poetry_env_list(directory: Path) -> List[Path]:
+    """Return list of poetry environments for the given directory."""
+    if (cache_dir := poetry_cache_dir()) is None:
+        return []
+    if (env_name := poetry_env_name(directory)) is None:
+        return []
+    return list((cache_dir / "virtualenvs").glob(f"{env_name}-py*"))
 
 
 def poetry_cache_dir() -> Union[Path, None]:
@@ -209,15 +192,6 @@ def poetry_env_name(directory: Path) -> Union[str, None]:
     return f"{sanitized_name}-{b64_hash}"
 
 
-def poetry_env_list(directory: Path) -> List[Path]:
-    """Return list of poetry environments for the given directory."""
-    if (cache_dir := poetry_cache_dir()) is None:
-        return []
-    if (env_name := poetry_env_name(directory)) is None:
-        return []
-    return list((cache_dir / "virtualenvs").glob(f"{env_name}-py*"))
-
-
 def poetry_project_name(directory: Path) -> Union[str, None]:
     """Parse the poetry project name from the given directory."""
     try:
@@ -243,6 +217,32 @@ def poetry_project_name(directory: Path) -> Union[str, None]:
             continue
         if key == "name":
             return val
+    return None
+
+
+def env_activation_path(env_dir: Path) -> Union[Path, None]:
+    """Get the path to the activation script for the environment."""
+    if operating_system() is Os.WINDOWS:
+        if (path := env_dir / "Scripts" / "Activate.ps1").is_file():
+            return path
+    elif (path := env_dir / "bin" / "activate").is_file():
+        return path
+    return None
+
+
+def operating_system() -> Union[Os, None]:
+    """
+    Return the operating system the script's being run on.
+
+    Return 'None' if we're on an operating system we can't handle.
+    """
+    platform_sys = platform.system()
+    if platform_sys == "Darwin":
+        return Os.MACOS
+    if platform_sys == "Windows":
+        return Os.WINDOWS
+    if platform_sys == "Linux":
+        return Os.LINUX
     return None
 
 
