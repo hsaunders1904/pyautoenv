@@ -163,7 +163,7 @@ def windows_poetry_cache_dir() -> Union[Path, None]:
     """Return the poetry cache directory for Windows."""
     if not (app_data := os.environ.get("LOCALAPPDATA", None)):
         return None
-    return Path(app_data) / "pypoetry"
+    return Path(app_data) / "pypoetry" / "Cache"
 
 
 def poetry_env_name(directory: Path) -> Union[str, None]:
