@@ -29,7 +29,7 @@ import sys
 from pathlib import Path
 from typing import List, TextIO, Union
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 
 class Os(enum.Enum):
