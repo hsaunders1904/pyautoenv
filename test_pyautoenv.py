@@ -249,7 +249,7 @@ class PoetryTester:
     POETRY_DIR: Path
     VENV_DIR: Path
     NOT_POETRY_DIR = "not_a_poetry_project"
-    POETRY_PROJ = Path("/python_project")
+    POETRY_PROJ = Path("python_project")
 
     def setup_method(self):
         self.os_patch = mock.patch(OPERATING_SYSTEM, return_value=self.OS)
@@ -371,7 +371,7 @@ class PoetryTester:
         self,
         pyproject_toml,
     ):
-        assert (self.POETRY_PROJ / "pyproject.toml").write_text(pyproject_toml)
+        assert Path("python_project/pyproject.toml").write_text(pyproject_toml)
         stdout = StringIO()
 
         assert pyautoenv.main([str(self.POETRY_PROJ)], stdout) == 0
@@ -382,7 +382,13 @@ class TestPoetryWindows(PoetryTester):
     ACTIVATOR = Path("Scripts") / "Activate.ps1"
     OS = pyautoenv.Os.WINDOWS
     POETRY_DIR = (
-        Path("C") / "Users" / "user" / "AppData" / "Local" / "pypoetry"
+        Path("C")
+        / "Users"
+        / "user"
+        / "AppData"
+        / "Local"
+        / "pypoetry"
+        / "Cache"
     )
     VENV_DIR = POETRY_DIR / "virtualenvs" / "python_project-frtSrewI-py3.11"
 
