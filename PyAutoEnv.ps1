@@ -50,7 +50,7 @@ function Invoke-PyAutoEnv() {
 .LINK
   https://github.com/hsaunders1904/pyautoenv/
 #>
-function Invoke-AutoEnvPyVersion() {
+function Invoke-PyAutoEnvVersion() {
   $PyAutoEnv = Join-Path "${PyAutoEnvDir}" "pyautoenv.py"
   python3 "${PyAutoEnv}" --version
 }
