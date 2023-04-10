@@ -155,11 +155,12 @@ def poetry_cache_dir() -> Union[Path, None]:
     cache_dir_str = os.environ.get("POETRY_CACHE_DIR", None)
     if cache_dir_str and (cache_dir := Path(cache_dir_str)).is_dir():
         return cache_dir
-    if operating_system() is Os.WINDOWS:
+    op_sys = operating_system()
+    if op_sys is Os.WINDOWS:
         return windows_poetry_cache_dir()
-    if operating_system() is Os.MACOS:
+    if op_sys is Os.MACOS:
         return macos_poetry_cache_dir()
-    if operating_system() is Os.LINUX:
+    if op_sys is Os.LINUX:
         return linux_poetry_cache_dir()
     return None
 
