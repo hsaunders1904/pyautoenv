@@ -280,8 +280,7 @@ def operating_system() -> Union[Os, None]:
 
 if __name__ == "__main__":
     try:
-        exit_code = main(sys.argv[1:], sys.stdout)
+        sys.exit(main(sys.argv[1:], sys.stdout))
     except Exception as exc:  # noqa: BLE001
         sys.stderr.write(f"pyautoenv: error: {exc}\n")
         sys.exit(1)
-    sys.exit(exit_code)
