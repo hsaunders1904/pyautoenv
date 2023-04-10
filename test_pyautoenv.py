@@ -28,6 +28,13 @@ import pyautoenv
 OPERATING_SYSTEM = "pyautoenv.operating_system"
 
 
+def test_main_does_nothing_given_directory_does_not_exist():
+    stdout = StringIO()
+
+    assert pyautoenv.main(["/not/a/dir"], stdout) == 1
+    assert not stdout.getvalue()
+
+
 @pytest.mark.parametrize(
     ("os_name", "enum_value"),
     [
@@ -43,42 +50,6 @@ def test_operating_system_returns_enum_based_on_sys_platform(
 ):
     with mock.patch("pyautoenv.platform.system", return_value=os_name):
         assert pyautoenv.operating_system() == enum_value
-
-
-def activate_venv(venv_dir: Union[str, Path]) -> None:
-    """Activate the venv at the given path."""
-    os.environ["VIRTUAL_ENV"] = str(venv_dir)
-
-
-def make_poetry_project(
-    fs: FakeFilesystem,
-    name: str,
-    path: Path,
-) -> FakeFilesystem:
-    """Create a poetry project on the given file system."""
-    fs.create_file(path / "poetry.lock")
-    fs.create_file(path / "pyproject.toml").set_contents(
-        "[build-system]\n"
-        'requires = ["poetry-core>=1.0.0"]\n'
-        'build-backend = "poetry.core.masonry.api"\n'
-        "\n"
-        "[tool.poetry]\n"
-        "# comment\n"
-        'names = "not this one!"\n'
-        f'name = "{name}"\n'
-        'version = "0.2.0"\n'
-        "some_list = [\n"
-        "    'val1',\n"
-        "    'val2',\n"
-        "]\n"
-        "\n"
-        "[tool.ruff]\n"
-        "select = [\n"
-        '    "F",\n'
-        '    "W",\n'
-        "]\n",
-    )
-    return fs
 
 
 class TestParseArgs:
@@ -118,13 +89,6 @@ class TestParseArgs:
     def test_raises_value_error_given_more_than_two_args(self):
         with pytest.raises(ValueError):  # noqa: PT011
             pyautoenv.parse_args(["/some/dir", "/another/dir"])
-
-
-def test_main_does_nothing_given_directory_does_not_exist():
-    stdout = StringIO()
-
-    assert pyautoenv.main(["/not/a/dir"], stdout) == 1
-    assert not stdout.getvalue()
 
 
 class TestVenv:
@@ -467,3 +431,39 @@ class TestPoetryLinux(PoetryTester):
     def setup_method(self):
         super().setup_method()
         os.environ = {"HOME": "/Users/user/"}  # noqa: B003
+
+
+def activate_venv(venv_dir: Union[str, Path]) -> None:
+    """Activate the venv at the given path."""
+    os.environ["VIRTUAL_ENV"] = str(venv_dir)
+
+
+def make_poetry_project(
+    fs: FakeFilesystem,
+    name: str,
+    path: Path,
+) -> FakeFilesystem:
+    """Create a poetry project on the given file system."""
+    fs.create_file(path / "poetry.lock")
+    fs.create_file(path / "pyproject.toml").set_contents(
+        "[build-system]\n"
+        'requires = ["poetry-core>=1.0.0"]\n'
+        'build-backend = "poetry.core.masonry.api"\n'
+        "\n"
+        "[tool.poetry]\n"
+        "# comment\n"
+        'names = "not this one!"\n'
+        f'name = "{name}"\n'
+        'version = "0.2.0"\n'
+        "some_list = [\n"
+        "    'val1',\n"
+        "    'val2',\n"
+        "]\n"
+        "\n"
+        "[tool.ruff]\n"
+        "select = [\n"
+        '    "F",\n'
+        '    "W",\n'
+        "]\n",
+    )
+    return fs
