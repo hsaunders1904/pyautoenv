@@ -31,6 +31,16 @@ from typing import List, TextIO, Union
 
 __version__ = "0.2.1"
 
+CLI_HELP = f"""usage: pyautoenv [-h] [-V] [directory]
+{__doc__}
+positional arguments:
+  directory      the path to look in for a python environment
+
+options:
+  -h, --help     show this help message and exit
+  -V, --version  show program's version number and exit
+"""
+
 
 class Os(enum.Enum):
     """Supported OS names."""
@@ -59,21 +69,22 @@ def main(sys_args: List[str], stdout: TextIO) -> int:
 
 
 def parse_args(argv: List[str]) -> Path:
-    """
-    Parse the sequence of command line arguments.
-
-    Using argparse is slower than I like.
-    """
+    """Parse the sequence of command line arguments."""
+    # Avoiding argparse gives a good speed boost and the parsing logic
+    # is not too complex. We won't get a full 'bells and whistles' CLI
+    # experience, but that's fine for our use-case.
     if len(argv) == 0:
         return Path.cwd()
-    if len(argv) > 1:
-        sys.stderr.write(
-            f"pyautoenv: error: exactly one argument expected, found {len(argv)}\n",
-        )
-        sys.exit(1)
-    if argv[0] in ["-V", "--version"]:
+    if any(h in argv for h in ["-h", "--help"]):
+        sys.stdout.write(CLI_HELP)
+        sys.exit(0)
+    if any(v in argv for v in ["-V", "--version"]):
         sys.stdout.write(f"pyautoenv {__version__}\n")
         sys.exit(0)
+    if len(argv) > 1:
+        raise ValueError(  # noqa: TRY003
+            f"exactly one argument expected, found {len(argv)}",
+        )
     return Path(argv[0]).resolve()
 
 

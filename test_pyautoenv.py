@@ -28,33 +28,6 @@ import pyautoenv
 OPERATING_SYSTEM = "pyautoenv.operating_system"
 
 
-def test_parse_args_directory_is_cwd_by_default():
-    directory = pyautoenv.parse_args([])
-
-    assert directory == Path.cwd()
-
-
-def test_parse_args_directory_is_set():
-    directory = pyautoenv.parse_args(["/some/dir"])
-
-    assert directory == Path("/some/dir")
-
-
-def test_parse_args_version_prints_version_and_exits(capsys):
-    with pytest.raises(SystemExit) as sys_exit:
-        pyautoenv.parse_args(["--version"])
-    stdout = capsys.readouterr().out
-    assert re.match(r"pyautoenv [0-9]+\.[0-9]+\.[0-9](\.\w+)?\n", stdout)
-    assert sys_exit.value.code == 0
-
-
-def test_main_does_nothing_given_directory_does_not_exist():
-    stdout = StringIO()
-
-    assert pyautoenv.main(["/not/a/dir"], stdout) == 1
-    assert not stdout.getvalue()
-
-
 @pytest.mark.parametrize(
     ("os_name", "enum_value"),
     [
@@ -106,6 +79,52 @@ def make_poetry_project(
         "]\n",
     )
     return fs
+
+
+class TestParseArgs:
+    def test_directory_is_cwd_by_default(self):
+        directory = pyautoenv.parse_args([])
+
+        assert directory == Path.cwd()
+
+    def test_directory_is_set(self):
+        directory = pyautoenv.parse_args(["/some/dir"])
+
+        assert directory == Path("/some/dir")
+
+    @pytest.mark.parametrize(
+        "args",
+        [["-h"], ["--help"], ["abc", "--help"], ["-V", "--help"]],
+    )
+    def test_help_prints_help_and_exits(self, capsys, args):
+        with pytest.raises(SystemExit) as sys_exit:
+            pyautoenv.parse_args(args)
+        stdout = capsys.readouterr().out
+        assert re.match(r"usage: pyautoenv(.py)? .*\n", stdout)
+        assert pyautoenv.__doc__ in stdout
+        assert sys_exit.value.code == 0
+
+    @pytest.mark.parametrize(
+        "args",
+        [["-V"], ["--version"], ["abc", "--version"]],
+    )
+    def test_version_prints_version_and_exits(self, capsys, args):
+        with pytest.raises(SystemExit) as sys_exit:
+            pyautoenv.parse_args(args)
+        stdout = capsys.readouterr().out
+        assert re.match(r"pyautoenv [0-9]+\.[0-9]+\.[0-9](\.\w+)?\n", stdout)
+        assert sys_exit.value.code == 0
+
+    def test_raises_value_error_given_more_than_two_args(self):
+        with pytest.raises(ValueError):  # noqa: PT011
+            pyautoenv.parse_args(["/some/dir", "/another/dir"])
+
+
+def test_main_does_nothing_given_directory_does_not_exist():
+    stdout = StringIO()
+
+    assert pyautoenv.main(["/not/a/dir"], stdout) == 1
+    assert not stdout.getvalue()
 
 
 class TestVenv:
