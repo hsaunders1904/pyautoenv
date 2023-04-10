@@ -360,6 +360,13 @@ class PoetryTester:
         assert pyautoenv.main([str(self.POETRY_PROJ)], stdout) == 0
         assert not stdout.getvalue()
 
+    def test_nothing_happens_given_pyproject_toml_does_not_exist(self, fs):
+        fs.remove(self.POETRY_PROJ / "pyproject.toml")
+        stdout = StringIO()
+
+        assert pyautoenv.main([str(self.POETRY_PROJ)], stdout) == 0
+        assert not stdout.getvalue()
+
 
 class TestPoetryWindows(PoetryTester):
     ACTIVATOR = Path("Scripts") / "Activate.ps1"
