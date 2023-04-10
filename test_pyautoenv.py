@@ -367,6 +367,13 @@ class PoetryTester:
         assert pyautoenv.main([str(self.POETRY_PROJ)], stdout) == 0
         assert not stdout.getvalue()
 
+    def test_nothing_happens_given_unknown_operating_system(self):
+        stdout = StringIO()
+
+        with mock.patch(OPERATING_SYSTEM, new=mock.Mock(return_value=None)):
+            assert pyautoenv.main([str(self.POETRY_PROJ)], stdout) == 0
+        assert not stdout.getvalue()
+
 
 class TestPoetryWindows(PoetryTester):
     ACTIVATOR = Path("Scripts") / "Activate.ps1"
@@ -396,6 +403,13 @@ class TestPoetryWindows(PoetryTester):
         os.environ = {  # noqa: B003
             "LOCALAPPDATA": "C/Users/user/AppData/Local",
         }
+
+    def test_nothing_happens_given_app_data_env_var_not_set(self):
+        del os.environ["LOCALAPPDATA"]
+        stdout = StringIO()
+
+        assert pyautoenv.main([str(self.POETRY_PROJ)], stdout) == 0
+        assert not stdout.getvalue()
 
 
 class TestPoetryMacOs(PoetryTester):
