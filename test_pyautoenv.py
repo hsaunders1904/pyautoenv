@@ -53,13 +53,16 @@ def test_operating_system_returns_enum_based_on_sys_platform(
 
 
 class TestParseArgs:
+    def setup_method(self):
+        self.stdout = StringIO()
+
     def test_directory_is_cwd_by_default(self):
-        directory = pyautoenv.parse_args([])
+        directory = pyautoenv.parse_args([], self.stdout)
 
         assert directory == Path.cwd()
 
     def test_directory_is_set(self):
-        directory = pyautoenv.parse_args(["/some/dir"])
+        directory = pyautoenv.parse_args(["/some/dir"], self.stdout)
 
         assert directory == Path("/some/dir")
 
@@ -67,28 +70,27 @@ class TestParseArgs:
         "args",
         [["-h"], ["--help"], ["abc", "--help"], ["-V", "--help"]],
     )
-    def test_help_prints_help_and_exits(self, capsys, args):
+    def test_help_prints_help_and_exits(self, args):
         with pytest.raises(SystemExit) as sys_exit:
-            pyautoenv.parse_args(args)
-        stdout = capsys.readouterr().out
-        assert re.match(r"usage: pyautoenv(.py)? .*\n", stdout)
-        assert pyautoenv.__doc__ in stdout
+            pyautoenv.parse_args(args, self.stdout)
+        assert re.match(r"usage: pyautoenv(.py)? .*\n", self.stdout.getvalue())
+        assert pyautoenv.__doc__ in self.stdout.getvalue()
         assert sys_exit.value.code == 0
 
     @pytest.mark.parametrize(
         "args",
-        [["-V"], ["--version"], ["abc", "--version"]],
+        [["-V"], ["--version"], ["x", "--version"]],
     )
-    def test_version_prints_version_and_exits(self, capsys, args):
+    def test_version_prints_version_and_exits(self, args):
         with pytest.raises(SystemExit) as sys_exit:
-            pyautoenv.parse_args(args)
-        stdout = capsys.readouterr().out
-        assert re.match(r"pyautoenv [0-9]+\.[0-9]+\.[0-9](\.\w+)?\n", stdout)
+            pyautoenv.parse_args(args, self.stdout)
+        version_pattern = r"pyautoenv [0-9]+\.[0-9]+\.[0-9](\.\w+)?\n"
+        assert re.match(version_pattern, self.stdout.getvalue())
         assert sys_exit.value.code == 0
 
     def test_raises_value_error_given_more_than_two_args(self):
         with pytest.raises(ValueError):  # noqa: PT011
-            pyautoenv.parse_args(["/some/dir", "/another/dir"])
+            pyautoenv.parse_args(["/some/dir", "/another/dir"], self.stdout)
 
 
 class TestVenv:

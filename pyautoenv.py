@@ -52,7 +52,7 @@ class Os(enum.Enum):
 
 def main(sys_args: List[str], stdout: TextIO) -> int:
     """Write commands to activate/deactivate environments."""
-    directory = parse_args(sys_args)
+    directory = parse_args(sys_args, stdout)
     if not directory.is_dir():
         return 1
     new_env_path = discover_env(directory)
@@ -68,7 +68,7 @@ def main(sys_args: List[str], stdout: TextIO) -> int:
     return 0
 
 
-def parse_args(argv: List[str]) -> Path:
+def parse_args(argv: List[str], stdout: TextIO) -> Path:
     """Parse the sequence of command line arguments."""
     # Avoiding argparse gives a good speed boost and the parsing logic
     # is not too complex. We won't get a full 'bells and whistles' CLI
@@ -76,10 +76,10 @@ def parse_args(argv: List[str]) -> Path:
     if len(argv) == 0:
         return Path.cwd()
     if any(h in argv for h in ["-h", "--help"]):
-        sys.stdout.write(CLI_HELP)
+        stdout.write(CLI_HELP)
         sys.exit(0)
     if any(v in argv for v in ["-V", "--version"]):
-        sys.stdout.write(f"pyautoenv {__version__}\n")
+        stdout.write(f"pyautoenv {__version__}\n")
         sys.exit(0)
     if len(argv) > 1:
         raise ValueError(  # noqa: TRY003
