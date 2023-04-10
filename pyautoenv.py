@@ -96,7 +96,7 @@ def get_virtual_env(directory: Path) -> Union[Path, None]:
 
 
 def has_venv(directory: Path) -> bool:
-    """Return true if the given directory is venv project directory."""
+    """Return true if the given directory contains a project with a venv."""
     candidate_path = venv_path(directory)
     return candidate_path.is_file()
 
@@ -109,7 +109,7 @@ def venv_path(directory: Path) -> Path:
 
 
 def has_poetry_env(directory: Path) -> bool:
-    """Return true if a the given directory is a poetry project."""
+    """Return true if the given directory contains a poetry project."""
     return (directory / "poetry.lock").is_file()
 
 
@@ -126,7 +126,12 @@ def poetry_env_path(directory: Path) -> Union[Path, None]:
 
 
 def poetry_env_list(directory: Path) -> List[Path]:
-    """Return list of poetry environments for the given directory."""
+    """
+    Return list of poetry environments for the given directory.
+
+    This can be found via the poetry CLI using
+    ``poetry env list --full-path``, but it's painfully slow.
+    """
     if (cache_dir := poetry_cache_dir()) is None:
         return []
     if (env_name := poetry_env_name(directory)) is None:
@@ -170,6 +175,18 @@ def poetry_env_name(directory: Path) -> Union[str, None]:
     """
     Get the name of the poetry environment defined in the given directory.
 
+    A poetry environment directory will have a name of the form
+    ``pyautoenv-AacnJhVq-py3.10``. Where the first part is the
+    (sanitized) project name taken from 'pyproject.toml'. The second
+    part is the first 8 characters of the (base64 encoded) SHA256 hash
+    of the absolute path of the project directory. The final part is
+    'py' followed by the Python version (<major>.<minor>).
+
+    This function derives the first two parts of this name. There may be
+    multiple environments (using different Python versions) for a given
+    poetry project, so we must search for the final part of the name
+    later.
+
     Logic comes from the poetry source code:
     https://github.com/python-poetry/poetry/blob/2b15ce10f02b0c6347fe2f12ae902488edeaaf7c/src/poetry/utils/env.py#L1207.
     """
@@ -177,7 +194,8 @@ def poetry_env_name(directory: Path) -> Union[str, None]:
         return None
     name = name.lower()
     sanitized_name = (
-        # This is a bit ugly, but it's more performant than using a regex
+        # This is a bit ugly, but it's more performant than using a regex.
+        # The import time for the 're' module is also a factor.
         name.replace(" ", "_")
         .replace("$", "_")
         .replace("`", "_")
