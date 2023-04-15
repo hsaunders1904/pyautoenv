@@ -59,12 +59,12 @@ class TestParseArgs:
     def test_directory_is_cwd_by_default(self):
         directory = pyautoenv.parse_args([], self.stdout)
 
-        assert directory == Path.cwd()
+        assert directory == str(Path.cwd())
 
     def test_directory_is_set(self):
         directory = pyautoenv.parse_args(["/some/dir"], self.stdout)
 
-        assert directory == Path("/some/dir")
+        assert directory == "/some/dir"
 
     @pytest.mark.parametrize(
         "args",
