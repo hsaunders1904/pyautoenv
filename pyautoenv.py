@@ -20,9 +20,7 @@ Print a command to activate or deactivate a Python venv based on a directory.
 Supports environments managed by venv and poetry.
 """
 
-import base64
 import enum
-import hashlib
 import os
 import sys
 from pathlib import Path
@@ -203,6 +201,10 @@ def poetry_env_name(directory: Path) -> Union[str, None]:
     """
     if (name := poetry_project_name(directory)) is None:
         return None
+
+    import base64
+    import hashlib
+
     name = name.lower()
     sanitized_name = (
         # This is a bit ugly, but it's more performant than using a regex.
