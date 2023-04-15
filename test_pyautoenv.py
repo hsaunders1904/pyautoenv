@@ -38,9 +38,9 @@ def test_main_does_nothing_given_directory_does_not_exist():
 @pytest.mark.parametrize(
     ("os_name", "enum_value"),
     [
-        ("Linux", pyautoenv.Os.LINUX),
-        ("Darwin", pyautoenv.Os.MACOS),
-        ("Windows", pyautoenv.Os.WINDOWS),
+        ("linux2", pyautoenv.Os.LINUX),
+        ("darwin", pyautoenv.Os.MACOS),
+        ("win32", pyautoenv.Os.WINDOWS),
         ("Java", None),
     ],
 )
@@ -48,7 +48,7 @@ def test_operating_system_returns_enum_based_on_sys_platform(
     os_name,
     enum_value,
 ):
-    with mock.patch("pyautoenv.platform.system", return_value=os_name):
+    with mock.patch("pyautoenv.sys.platform", new=os_name):
         assert pyautoenv.operating_system() == enum_value
 
 

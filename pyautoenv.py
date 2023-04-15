@@ -24,7 +24,6 @@ import base64
 import enum
 import hashlib
 import os
-import platform
 import sys
 from pathlib import Path
 from typing import List, TextIO, Union
@@ -269,12 +268,12 @@ def operating_system() -> Union[Os, None]:
 
     Return 'None' if we're on an operating system we can't handle.
     """
-    platform_sys = platform.system()
-    if platform_sys == "Darwin":
+    platform_sys = sys.platform
+    if platform_sys == "darwin":
         return Os.MACOS
-    if platform_sys == "Windows":
+    if platform_sys.startswith("win"):
         return Os.WINDOWS
-    if platform_sys == "Linux":
+    if platform_sys.startswith("linux"):
         return Os.LINUX
     return None
 
