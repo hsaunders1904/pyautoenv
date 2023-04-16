@@ -17,10 +17,11 @@
 """
 Print a command to activate or deactivate a Python venv based on a directory.
 
-Supports environments managed by venv and poetry.
+Supports environments managed by venv and poetry. A venv project directory
+must contain a directory called '.venv', a poetry project directory must
+contain a 'poetry.lock' file.
 """
 
-import enum
 import os
 import sys
 from pathlib import Path
@@ -39,12 +40,12 @@ options:
 """
 
 
-class Os(enum.Enum):
-    """Supported OS names."""
+class Os:
+    """Pseudo-enum for supported operating systems."""
 
-    LINUX = enum.auto()
-    MACOS = enum.auto()
-    WINDOWS = enum.auto()
+    LINUX = 0
+    MACOS = 1
+    WINDOWS = 2
 
 
 def main(sys_args: List[str], stdout: TextIO) -> int:
@@ -111,7 +112,7 @@ def has_venv(directory: Path) -> bool:
 
 def venv_path(directory: Path) -> Path:
     """Get the path to the activate script for a venv."""
-    if operating_system() is Os.WINDOWS:
+    if operating_system() == Os.WINDOWS:
         return directory / ".venv" / "Scripts" / "Activate.ps1"
     return directory / ".venv" / "bin" / "activate"
 
@@ -153,11 +154,11 @@ def poetry_cache_dir() -> Union[Path, None]:
     if cache_dir_str and (cache_dir := Path(cache_dir_str)).is_dir():
         return cache_dir
     op_sys = operating_system()
-    if op_sys is Os.WINDOWS:
+    if op_sys == Os.WINDOWS:
         return windows_poetry_cache_dir()
-    if op_sys is Os.MACOS:
+    if op_sys == Os.MACOS:
         return macos_poetry_cache_dir()
-    if op_sys is Os.LINUX:
+    if op_sys == Os.LINUX:
         return linux_poetry_cache_dir()
     return None
 
@@ -256,7 +257,7 @@ def poetry_project_name(directory: Path) -> Union[str, None]:
 
 def env_activation_path(env_dir: Path) -> Union[Path, None]:
     """Get the path to the activation script for the environment."""
-    if operating_system() is Os.WINDOWS:
+    if operating_system() == Os.WINDOWS:
         if (path := env_dir / "Scripts" / "Activate.ps1").is_file():
             return path
     elif (path := env_dir / "bin" / "activate").is_file():
@@ -264,7 +265,7 @@ def env_activation_path(env_dir: Path) -> Union[Path, None]:
     return None
 
 
-def operating_system() -> Union[Os, None]:
+def operating_system() -> Union[int, None]:
     """
     Return the operating system the script's being run on.
 
