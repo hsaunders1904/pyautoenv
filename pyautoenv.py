@@ -144,10 +144,14 @@ def poetry_env_list(directory: str) -> List[str]:
         return []
     if (env_name := poetry_env_name(directory)) is None:
         return []
-    import glob
-
-    venv_dir = os.path.join(cache_dir, "virtualenvs")
-    return glob.glob(os.path.join(venv_dir, f"{env_name}-py*"))
+    try:
+        return [
+            f.path
+            for f in os.scandir(os.path.join(cache_dir, "virtualenvs"))
+            if f.name.startswith(f"{env_name}-py")
+        ]
+    except OSError:
+        return []
 
 
 def poetry_cache_dir() -> Union[str, None]:
