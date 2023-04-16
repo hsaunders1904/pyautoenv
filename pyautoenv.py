@@ -213,6 +213,9 @@ def poetry_env_name(directory: str) -> Union[str, None]:
     if (name := poetry_project_name(directory)) is None:
         return None
 
+    # These two take roughly the same amount of time to import as it
+    # does to run the rest of the script. Import locally here, so we're
+    # only importing when we know that we need to.
     import base64
     import hashlib
 
