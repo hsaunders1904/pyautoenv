@@ -72,7 +72,7 @@ def parse_args(argv: List[str], stdout: TextIO) -> str:
     # is not too complex. We won't get a full 'bells and whistles' CLI
     # experience, but that's fine for our use-case.
     if len(argv) == 0:
-        return os.getcwd()
+        return "."
     if any(h in argv for h in ["-h", "--help"]):
         stdout.write(CLI_HELP)
         sys.exit(0)
@@ -83,7 +83,7 @@ def parse_args(argv: List[str], stdout: TextIO) -> str:
         raise ValueError(  # noqa: TRY003
             f"exactly one argument expected, found {len(argv)}",
         )
-    return os.path.abspath(argv[0])
+    return argv[0]
 
 
 def discover_env(directory: str) -> Union[str, None]:

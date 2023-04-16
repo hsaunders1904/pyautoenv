@@ -61,7 +61,7 @@ class TestParseArgs:
     def test_directory_is_cwd_by_default(self):
         directory = pyautoenv.parse_args([], self.stdout)
 
-        assert directory == str(Path.cwd())
+        assert os.path.samefile(directory, Path.cwd())
 
     def test_directory_is_set(self):
         directory = pyautoenv.parse_args(["/some/dir"], self.stdout)
@@ -167,7 +167,7 @@ class TestVenv:
         activator,
     ):
         stdout = StringIO()
-        new_venv_activate = Path("/pyproj2/.venv") / activator
+        new_venv_activate = Path("pyproj2/.venv") / activator
         fs.create_file(new_venv_activate)
         activate_venv(self.VENV_DIR)
 
