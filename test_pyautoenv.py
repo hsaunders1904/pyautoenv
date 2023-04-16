@@ -48,6 +48,8 @@ def test_operating_system_returns_enum_based_on_sys_platform(
     os_name,
     enum_value,
 ):
+    pyautoenv.Os.CURRENT = -1
+
     with mock.patch("pyautoenv.sys.platform", new=os_name):
         assert pyautoenv.operating_system() == enum_value
 
@@ -230,7 +232,7 @@ class PoetryTester:
     """
 
     ACTIVATOR: Path
-    OS: pyautoenv.Os
+    OS: int
     POETRY_DIR: Path
     VENV_DIR: Path
     NOT_POETRY_DIR = "not_a_poetry_project"

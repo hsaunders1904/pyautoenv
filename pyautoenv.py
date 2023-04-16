@@ -21,7 +21,6 @@ Supports environments managed by venv and poetry. A venv project directory
 must contain a directory called '.venv', a poetry project directory must
 contain a 'poetry.lock' file.
 """
-
 import os
 import sys
 from typing import List, TextIO, Union
@@ -45,6 +44,8 @@ class Os:
     LINUX = 0
     MACOS = 1
     WINDOWS = 2
+    # a variable to cache the current OS once it's checked.
+    CURRENT: Union[int, None] = -1
 
 
 def main(sys_args: List[str], stdout: TextIO) -> int:
@@ -283,14 +284,16 @@ def operating_system() -> Union[int, None]:
 
     Return 'None' if we're on an operating system we can't handle.
     """
-    platform_sys = sys.platform
-    if platform_sys == "darwin":
-        return Os.MACOS
-    if platform_sys.startswith("win"):
-        return Os.WINDOWS
-    if platform_sys.startswith("linux"):
-        return Os.LINUX
-    return None
+    if Os.CURRENT == -1:
+        if sys.platform.startswith("darwin"):
+            Os.CURRENT = Os.MACOS
+        elif sys.platform.startswith("win"):
+            Os.CURRENT = Os.WINDOWS
+        elif sys.platform.startswith("linux"):
+            Os.CURRENT = Os.LINUX
+        else:
+            Os.CURRENT = None
+    return Os.CURRENT
 
 
 if __name__ == "__main__":
