@@ -30,7 +30,7 @@ __version__ = "0.2.1"
 CLI_HELP = f"""usage: pyautoenv [-h] [-V] [directory]
 {__doc__}
 positional arguments:
-  directory      the path to look in for a python environment
+  directory      the path to look in for a python environment (default: '.')
 
 options:
   -h, --help     show this help message and exit
