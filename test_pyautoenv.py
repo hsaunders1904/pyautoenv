@@ -378,12 +378,20 @@ class PoetryTester:
             assert pyautoenv.main([str(self.POETRY_PROJ)], stdout) == 0
         assert not stdout.getvalue()
 
+    def test_nothing_happens_given_active_env_and_relative_subdirectory(self):
+        stdout = StringIO()
+        os.chdir(self.POETRY_PROJ)
+        activate_venv(self.VENV_DIR)
+
+        assert pyautoenv.main(["src"], stdout) == 0
+        assert not stdout.getvalue()
+
 
 class TestPoetryWindows(PoetryTester):
     ACTIVATOR = Path("Scripts") / "Activate.ps1"
     OS = pyautoenv.Os.WINDOWS
     POETRY_DIR = (
-        Path("C")
+        Path(Path("/").root)
         / "Users"
         / "user"
         / "AppData"
@@ -405,7 +413,9 @@ class TestPoetryWindows(PoetryTester):
     def setup_method(self):
         super().setup_method()
         os.environ = {  # noqa: B003
-            "LOCALAPPDATA": "C/Users/user/AppData/Local",
+            "LOCALAPPDATA": str(
+                Path(Path("/").root) / "Users/user/AppData/Local",
+            ),
         }
 
     def test_nothing_happens_given_app_data_env_var_not_set(self):
