@@ -28,7 +28,7 @@ clone this repo into `~/.oh-my-zsh/plugins` or `${ZSH_CUSTOM}/plugins`.
 Then add `pyautoenv` to the list of enabled plugins in your `.zshrc`:
 
 ```zsh
-plugins( pyautoenv )
+plugins=( pyautoenv )
 ```
 
 If you're not using `oh-my-zsh`, `source` the `pyautoenv.plugin.zsh` script.
