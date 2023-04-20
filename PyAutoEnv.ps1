@@ -52,7 +52,7 @@ function Invoke-PyAutoEnv() {
 #>
 function Invoke-PyAutoEnvVersion() {
   $PyAutoEnv = Join-Path "${PyAutoEnvDir}" "pyautoenv.py"
-  python3 "${PyAutoEnv}" --version
+  python "${PyAutoEnv}" --version
 }
 
 function cd() {
