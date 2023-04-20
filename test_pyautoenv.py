@@ -28,6 +28,16 @@ import pyautoenv
 OPERATING_SYSTEM = "pyautoenv.operating_system"
 
 
+def root_dir() -> Path:
+    """
+    Return the root directory for the current system.
+
+    This is useful for OS-compatibility when we're building paths in
+    our tests.
+    """
+    return Path(os.path.abspath("/"))
+
+
 def test_main_does_nothing_given_directory_does_not_exist():
     stdout = StringIO()
 
@@ -64,9 +74,11 @@ class TestParseArgs:
         assert directory == str(Path.cwd())
 
     def test_directory_is_set(self):
-        directory = pyautoenv.parse_args(["/some/dir"], self.stdout)
+        path = Path("some/dir")
 
-        assert directory == "/some/dir"
+        directory = pyautoenv.parse_args([str(path)], self.stdout)
+
+        assert directory == os.path.abspath(path)
 
     @pytest.mark.parametrize(
         "args",
@@ -101,7 +113,7 @@ class TestVenv:
         (pyautoenv.Os.LINUX, "bin/activate"),
         (pyautoenv.Os.MACOS, "bin/activate"),
     ]
-    PY_PROJ = Path("/python_project")
+    PY_PROJ = root_dir() / "python_project"
     VENV_DIR = PY_PROJ / ".venv"
 
     def setup_method(self):
@@ -167,7 +179,7 @@ class TestVenv:
         activator,
     ):
         stdout = StringIO()
-        new_venv_activate = Path("/pyproj2/.venv") / activator
+        new_venv_activate = root_dir() / "pyproj2" / ".venv" / activator
         fs.create_file(new_venv_activate)
         activate_venv(self.VENV_DIR)
 
@@ -288,7 +300,14 @@ class PoetryTester:
         stdout = StringIO()
         activate_venv(self.VENV_DIR)
         fs = make_poetry_project(fs, "pyproj2", Path("pyproj2"))
-        new_venv = self.POETRY_DIR / "virtualenvs" / "pyproj2-NKNCcI25-py3.8"
+        if os.name == "nt":
+            new_venv = (
+                self.POETRY_DIR / "virtualenvs" / "pyproj2-lbvqfyck-py3.8"
+            )
+        else:
+            new_venv = (
+                self.POETRY_DIR / "virtualenvs" / "pyproj2-NKNCcI25-py3.8"
+            )
         new_activate = new_venv / self.ACTIVATOR
         fs.create_file(new_activate)
 
@@ -314,12 +333,20 @@ class PoetryTester:
         stdout = StringIO()
         fs = make_poetry_project(fs, "pyproj2", Path("pyproj2"))
         new_venv_dir = Path("venv")
-        new_activator = (
-            new_venv_dir
-            / "virtualenvs"
-            / "pyproj2-NKNCcI25-py3.8"
-            / self.ACTIVATOR
-        )
+        if os.name == "nt":
+            new_activator = (
+                new_venv_dir
+                / "virtualenvs"
+                / "pyproj2-lbvqfyck-py3.8"
+                / self.ACTIVATOR
+            )
+        else:
+            new_activator = (
+                new_venv_dir
+                / "virtualenvs"
+                / "pyproj2-NKNCcI25-py3.8"
+                / self.ACTIVATOR
+            )
         fs.create_file(new_activator)
         os.environ["POETRY_CACHE_DIR"] = str(new_venv_dir)
 
@@ -391,7 +418,7 @@ class TestPoetryWindows(PoetryTester):
     ACTIVATOR = Path("Scripts") / "Activate.ps1"
     OS = pyautoenv.Os.WINDOWS
     POETRY_DIR = (
-        Path(Path("/").root)
+        root_dir()
         / "Users"
         / "user"
         / "AppData"
@@ -399,7 +426,14 @@ class TestPoetryWindows(PoetryTester):
         / "pypoetry"
         / "Cache"
     )
-    VENV_DIR = POETRY_DIR / "virtualenvs" / "python_project-frtSrewI-py3.11"
+    if os.name == "nt":
+        VENV_DIR = (
+            POETRY_DIR / "virtualenvs" / "python_project-1IhmuXCK-py3.11"
+        )
+    else:
+        VENV_DIR = (
+            POETRY_DIR / "virtualenvs" / "python_project-frtSrewI-py3.11"
+        )
 
     @pytest.fixture(autouse=True)
     def fs(self, fs: FakeFilesystem) -> FakeFilesystem:
@@ -414,7 +448,7 @@ class TestPoetryWindows(PoetryTester):
         super().setup_method()
         os.environ = {  # noqa: B003
             "LOCALAPPDATA": str(
-                Path(Path("/").root) / "Users/user/AppData/Local",
+                root_dir() / "Users/user/AppData/Local",
             ),
         }
 
@@ -430,9 +464,16 @@ class TestPoetryMacOs(PoetryTester):
     ACTIVATOR = Path("bin") / "activate"
     OS = pyautoenv.Os.MACOS
     POETRY_DIR = (
-        Path("/") / "Users" / "user" / "Library" / "Caches" / "pypoetry"
+        root_dir() / "Users" / "user" / "Library" / "Caches" / "pypoetry"
     )
-    VENV_DIR = POETRY_DIR / "virtualenvs" / "python_project-frtSrewI-py3.11"
+    if os.name == "nt":
+        VENV_DIR = (
+            POETRY_DIR / "virtualenvs" / "python_project-1IhmuXCK-py3.11"
+        )
+    else:
+        VENV_DIR = (
+            POETRY_DIR / "virtualenvs" / "python_project-frtSrewI-py3.11"
+        )
 
     @pytest.fixture(autouse=True)
     def fs(self, fs: FakeFilesystem) -> FakeFilesystem:
@@ -445,14 +486,24 @@ class TestPoetryMacOs(PoetryTester):
 
     def setup_method(self):
         super().setup_method()
-        os.environ = {"HOME": "/Users/user/"}  # noqa: B003
+        os.environ = {  # noqa: B003
+            "HOME": str(root_dir() / "Users" / "user"),
+            "USERPROFILE": str(root_dir() / "Users" / "user"),
+        }
 
 
 class TestPoetryLinux(PoetryTester):
     ACTIVATOR = Path("bin") / "activate"
     OS = pyautoenv.Os.LINUX
-    POETRY_DIR = Path("/") / "Users" / "user" / ".cache" / "pypoetry"
-    VENV_DIR = POETRY_DIR / "virtualenvs" / "python_project-frtSrewI-py3.11"
+    POETRY_DIR = root_dir() / "Users" / "user" / ".cache" / "pypoetry"
+    if os.name == "nt":
+        VENV_DIR = (
+            POETRY_DIR / "virtualenvs" / "python_project-1IhmuXCK-py3.11"
+        )
+    else:
+        VENV_DIR = (
+            POETRY_DIR / "virtualenvs" / "python_project-frtSrewI-py3.11"
+        )
 
     @pytest.fixture(autouse=True)
     def fs(self, fs: FakeFilesystem) -> FakeFilesystem:
@@ -465,7 +516,10 @@ class TestPoetryLinux(PoetryTester):
 
     def setup_method(self):
         super().setup_method()
-        os.environ = {"HOME": "/Users/user/"}  # noqa: B003
+        os.environ = {  # noqa: B003
+            "HOME": str(root_dir() / "Users" / "user"),
+            "USERPROFILE": str(root_dir() / "Users" / "user"),
+        }
 
 
 def activate_venv(venv_dir: Union[str, Path]) -> None:
