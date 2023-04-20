@@ -23,6 +23,9 @@ Supports Python versions 3.8 and up.
 
 Follow the installation instructions for your favourite shell.
 
+You can disable `pyautoenv` by setting the
+`PYAUTOENV_DISABLE` environment variable to a non-zero value.
+
 ### Zsh
 
 If you're using [oh-my-zsh](https://ohmyz.sh/),
