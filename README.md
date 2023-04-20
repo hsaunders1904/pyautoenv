@@ -6,16 +6,18 @@
 Automatically activate and deactivate Python environments
 as you move around the file system.
 
+## Description
+
 Heavily inspired by [autoenv](https://github.com/hyperupcall/autoenv).
 [Poetry](https://python-poetry.org/) or
 [venv](https://docs.python.org/3/library/venv.html)
 Python environments will automatically be activated when you cd into
 a directory that defines an environment
 (i.e., if a directory, or any of its parents,
-contains `.venv/` or `poetry.lock`).
+contains a `.venv/` directory or `poetry.lock` file).
 Environments are automatically deactivated when you leave the directory.
 
-Note that you must have Python >= 3.8 on your path for the plugin to work.
+Supports Python versions 3.8 and up.
 
 ## Install
 
@@ -28,7 +30,9 @@ clone this repo into `~/.oh-my-zsh/plugins` or `${ZSH_CUSTOM}/plugins`.
 Then add `pyautoenv` to the list of enabled plugins in your `.zshrc`:
 
 ```zsh
-plugins=( pyautoenv )
+plugins=(
+    pyautoenv
+)
 ```
 
 If you're not using `oh-my-zsh`, `source` the `pyautoenv.plugin.zsh` script.
@@ -59,7 +63,6 @@ To enable the application in PowerShell, dot the `.ps1` file.
 . <path to pyauotenv>\PyAutoEnv.ps1
 ```
 
-Add to your profile (get the path to it using `${Profile}`) to activate
-the application permanently.
+Add this to your profile to activate the application permanently.
 
 Note that this script re-aliases `cd`.
