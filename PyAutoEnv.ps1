@@ -23,8 +23,8 @@ if (Test-Path alias:cd) {
 .SYNOPSIS
   Activate/deactivate Python virtual environments based on the working directory.
 .DESCRIPTION
-  If a Python virtual environment is defined for the current working directory,
-  activate it. If one does not, deactivate any activate environment.
+  If a Python virtual environment is defined in the current working directory,
+  activate it. If one is not, deactivate any active environment.
 .LINK
   https://github.com/hsaunders1904/pyautoenv/
 #>
