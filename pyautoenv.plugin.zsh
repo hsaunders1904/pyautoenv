@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-THIS_DIR="${0:a:h}"
+_zsh_pyautoenv_path="${0:a:h}"
 
 function _zsh_pyautoenv_activate() {
     if [ "${PYAUTOENV_DISABLE-0}" -ne 0 ]; then
@@ -22,14 +22,14 @@ function _zsh_pyautoenv_activate() {
     if [ -z "$(command -v python3)" ]; then
         return
     fi
-    local pyautoenv_py="${THIS_DIR}/pyautoenv.py"
+    local pyautoenv_py="${_zsh_pyautoenv_path}/pyautoenv.py"
     if [ -f "${pyautoenv_py}" ]; then
         eval "$(python3 "${pyautoenv_py}")"
     fi
 }
 
 function _zsh_pyautoenv_version() {
-    python3 "${THIS_DIR}/pyautoenv.py" --version
+    python3 "${_zsh_pyautoenv_path}/pyautoenv.py" --version
 }
 
 autoload -Uz add-zsh-hook
