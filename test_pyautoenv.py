@@ -38,9 +38,9 @@ def test_main_does_nothing_given_directory_does_not_exist():
 @pytest.mark.parametrize(
     ("os_name", "enum_value"),
     [
-        ("Linux", pyautoenv.Os.LINUX),
-        ("Darwin", pyautoenv.Os.MACOS),
-        ("Windows", pyautoenv.Os.WINDOWS),
+        ("linux2", pyautoenv.Os.LINUX),
+        ("darwin", pyautoenv.Os.MACOS),
+        ("win32", pyautoenv.Os.WINDOWS),
         ("Java", None),
     ],
 )
@@ -48,7 +48,9 @@ def test_operating_system_returns_enum_based_on_sys_platform(
     os_name,
     enum_value,
 ):
-    with mock.patch("pyautoenv.platform.system", return_value=os_name):
+    pyautoenv.Os.CURRENT = -1
+
+    with mock.patch("pyautoenv.sys.platform", new=os_name):
         assert pyautoenv.operating_system() == enum_value
 
 
@@ -59,12 +61,12 @@ class TestParseArgs:
     def test_directory_is_cwd_by_default(self):
         directory = pyautoenv.parse_args([], self.stdout)
 
-        assert directory == Path.cwd()
+        assert directory == str(Path.cwd())
 
     def test_directory_is_set(self):
         directory = pyautoenv.parse_args(["/some/dir"], self.stdout)
 
-        assert directory == Path("/some/dir")
+        assert directory == "/some/dir"
 
     @pytest.mark.parametrize(
         "args",
@@ -230,7 +232,7 @@ class PoetryTester:
     """
 
     ACTIVATOR: Path
-    OS: pyautoenv.Os
+    OS: int
     POETRY_DIR: Path
     VENV_DIR: Path
     NOT_POETRY_DIR = "not_a_poetry_project"
