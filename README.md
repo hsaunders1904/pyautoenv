@@ -9,12 +9,12 @@ as you move around the file system.
 ## Description
 
 Heavily inspired by [autoenv](https://github.com/hyperupcall/autoenv).
+`pyautoenv` activates a
 [Poetry](https://python-poetry.org/) or
 [venv](https://docs.python.org/3/library/venv.html)
-Python environments will automatically be activated when you cd into
-a directory that defines an environment
-(i.e., if a directory, or any of its parents,
-contains a `.venv/` directory or `poetry.lock` file).
+Python environment when you cd into the directory that defines that environment
+(i.e., when a directory, or any of its parents,
+contains a `poetry.lock` file or a `.venv/` directory).
 Environments are automatically deactivated when you leave the directory.
 
 Supports Python versions 3.8 and up.
