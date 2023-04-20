@@ -174,14 +174,19 @@ def linux_poetry_cache_dir() -> Union[str, None]:
     """Return the poetry cache directory for Linux."""
     xdg_cache = os.environ.get(
         "XDG_CACHE_HOME",
-        os.path.expanduser("~/.cache"),
+        os.path.join(os.path.expanduser("~"), ".cache"),
     )
     return os.path.join(xdg_cache, "pypoetry")
 
 
 def macos_poetry_cache_dir() -> str:
     """Return the poetry cache directory for MacOS."""
-    return os.path.expanduser("~/Library/Caches/pypoetry")
+    return os.path.join(
+        os.path.expanduser("~"),
+        "Library",
+        "Caches",
+        "pypoetry",
+    )
 
 
 def windows_poetry_cache_dir() -> Union[str, None]:
