@@ -26,7 +26,7 @@ import sys
 from dataclasses import dataclass
 from typing import List, TextIO, Union
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 CLI_HELP = f"""usage: pyautoenv [-h] [-V] [--fish] [directory]
 {__doc__}
