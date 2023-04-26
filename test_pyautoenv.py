@@ -69,16 +69,16 @@ class TestParseArgs:
         self.stdout = StringIO()
 
     def test_directory_is_cwd_by_default(self):
-        directory = pyautoenv.parse_args([], self.stdout)
+        args = pyautoenv.parse_args([], self.stdout)
 
-        assert directory == str(Path.cwd())
+        assert args.directory == str(Path.cwd())
 
     def test_directory_is_set(self):
         path = Path("some/dir")
 
-        directory = pyautoenv.parse_args([str(path)], self.stdout)
+        args = pyautoenv.parse_args([str(path)], self.stdout)
 
-        assert directory == os.path.abspath(path)
+        assert args.directory == os.path.abspath(path)
 
     @pytest.mark.parametrize(
         "args",
@@ -102,6 +102,21 @@ class TestParseArgs:
         assert re.match(version_pattern, self.stdout.getvalue())
         assert sys_exit.value.code == 0
 
+    @pytest.mark.parametrize("argv", [[], ["path"]])
+    def test_fish_false_given_no_flag(self, argv):
+        args = pyautoenv.parse_args(argv, self.stdout)
+
+        assert args.fish is False
+
+    @pytest.mark.parametrize(
+        "argv",
+        [["--fish"], ["path", "--fish"], ["--fish", "path"]],
+    )
+    def test_fish_true_given_flag(self, argv):
+        args = pyautoenv.parse_args(argv, self.stdout)
+
+        assert args.fish is True
+
     def test_raises_value_error_given_more_than_two_args(self):
         with pytest.raises(ValueError):  # noqa: PT011
             pyautoenv.parse_args(["/some/dir", "/another/dir"], self.stdout)
@@ -124,6 +139,7 @@ class TestVenv:
         """Create a mock filesystem for every test in this class."""
         fs.create_dir(self.PY_PROJ / "src")
         fs.create_file(self.VENV_DIR / "bin" / "activate")
+        fs.create_file(self.VENV_DIR / "bin" / "activate.fish")
         fs.create_file(self.VENV_DIR / "Scripts" / "Activate.ps1")
         fs.create_dir("not_a_venv")
         return fs
@@ -164,11 +180,15 @@ class TestVenv:
         assert pyautoenv.main(["not_a_venv"], stdout) == 0
         assert not stdout.getvalue()
 
-    def test_deactivate_given_active_and_not_venv_dir(self):
+    @pytest.mark.parametrize(
+        "argv",
+        [["not_a_venv"], ["not_a_venv", "--fish"]],
+    )
+    def test_deactivate_given_active_and_not_venv_dir(self, argv):
         stdout = StringIO()
         activate_venv(self.VENV_DIR)
 
-        assert pyautoenv.main(["not_a_venv"], stdout) == 0
+        assert pyautoenv.main(argv, stdout) == 0
         assert stdout.getvalue() == "deactivate"
 
     @pytest.mark.parametrize(("os_name", "activator"), OS_NAME_ACTIVATORS)
@@ -222,6 +242,14 @@ class TestVenv:
         with mock.patch(OPERATING_SYSTEM, return_value=os_name):
             assert pyautoenv.main([str(self.PY_PROJ)], stdout) == 0
         assert not stdout.getvalue()
+
+    def test_fish_activation_script_given_fish_arg(self):
+        stdout = StringIO()
+
+        assert pyautoenv.main([str(self.PY_PROJ), "--fish"], stdout) == 0
+        assert (
+            stdout.getvalue() == f". {self.VENV_DIR / 'bin'/ 'activate.fish'}"
+        )
 
 
 class PoetryTester:
@@ -289,11 +317,15 @@ class PoetryTester:
         assert pyautoenv.main([str(self.POETRY_PROJ / "src")], stdout) == 0
         assert not stdout.getvalue()
 
-    def test_deactivate_given_active_and_not_venv_dir(self):
+    @pytest.mark.parametrize(
+        "argv",
+        [[NOT_POETRY_DIR], [NOT_POETRY_DIR, "--fish"]],
+    )
+    def test_deactivate_given_active_and_not_venv_dir(self, argv):
         stdout = StringIO()
         activate_venv(self.VENV_DIR)
 
-        assert pyautoenv.main([self.NOT_POETRY_DIR], stdout) == 0
+        assert pyautoenv.main(argv, stdout) == 0
         assert stdout.getvalue() == "deactivate"
 
     def test_deactivate_and_activate_switching_to_new_poetry_env(self, fs):
@@ -491,6 +523,13 @@ class TestPoetryMacOs(PoetryTester):
             "USERPROFILE": str(root_dir() / "Users" / "user"),
         }
 
+    def test_fish_activation_script_given_fish_arg(self, fs):
+        stdout = StringIO()
+        fs.create_file(self.VENV_DIR / "bin" / "activate.fish")
+
+        assert pyautoenv.main([str(self.POETRY_PROJ), "--fish"], stdout) == 0
+        assert stdout.getvalue() == f". {self.VENV_DIR / self.ACTIVATOR}.fish"
+
 
 class TestPoetryLinux(PoetryTester):
     ACTIVATOR = Path("bin") / "activate"
@@ -520,6 +559,13 @@ class TestPoetryLinux(PoetryTester):
             "HOME": str(root_dir() / "Users" / "user"),
             "USERPROFILE": str(root_dir() / "Users" / "user"),
         }
+
+    def test_fish_activation_script_given_fish_arg(self, fs):
+        stdout = StringIO()
+        fs.create_file(self.VENV_DIR / "bin" / "activate.fish")
+
+        assert pyautoenv.main([str(self.POETRY_PROJ), "--fish"], stdout) == 0
+        assert stdout.getvalue() == f". {self.VENV_DIR / self.ACTIVATOR}.fish"
 
 
 def activate_venv(venv_dir: Union[str, Path]) -> None:

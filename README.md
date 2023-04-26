@@ -58,6 +58,16 @@ Add this to your `.bashrc` to activate the application permanently.
 
 Note that this script will clobber the `cd` command.
 
+### Fish
+
+To enable the application in fish-shell, source the fish script.
+
+```fish
+source <path to pyauotenv>/pyautoenv.fish
+```
+
+Add this to your `config.fish` file to activate the application permanently.
+
 ### PowerShell
 
 To enable the application in PowerShell, dot the `.ps1` file.
