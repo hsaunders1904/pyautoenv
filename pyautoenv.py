@@ -23,19 +23,29 @@ contain a 'poetry.lock' file.
 """
 import os
 import sys
+from dataclasses import dataclass
 from typing import List, TextIO, Union
 
 __version__ = "0.3.0"
 
-CLI_HELP = f"""usage: pyautoenv [-h] [-V] [directory]
+CLI_HELP = f"""usage: pyautoenv [-h] [-V] [--fish] [directory]
 {__doc__}
 positional arguments:
   directory      the path to look in for a python environment (default: '.')
 
 options:
+  --fish         use fish activation script
   -h, --help     show this help message and exit
   -V, --version  show program's version number and exit
 """
+
+
+@dataclass
+class CliArgs:
+    """Holder for command line arguments."""
+
+    directory: str
+    fish: bool
 
 
 class Os:
@@ -50,40 +60,47 @@ class Os:
 
 def main(sys_args: List[str], stdout: TextIO) -> int:
     """Write commands to activate/deactivate environments."""
-    directory = parse_args(sys_args, stdout)
-    if not os.path.isdir(directory):
+    args = parse_args(sys_args, stdout)
+    if not os.path.isdir(args.directory):
         return 1
-    new_env_path = discover_env(directory)
+    new_env_path = discover_env(args.directory)
     if active_env_path := os.environ.get("VIRTUAL_ENV", None):
         if not new_env_path:
             stdout.write("deactivate")
         elif not os.path.samefile(new_env_path, active_env_path):
             stdout.write("deactivate")
-            if activate := env_activation_path(new_env_path):
+            if activate := env_activation_path(new_env_path, fish=args.fish):
                 stdout.write(f" && . {activate}")
-    elif new_env_path and (activate := env_activation_path(new_env_path)):
+    elif new_env_path and (
+        activate := env_activation_path(new_env_path, fish=args.fish)
+    ):
         stdout.write(f". {activate}")
     return 0
 
 
-def parse_args(argv: List[str], stdout: TextIO) -> str:
+def parse_args(argv: List[str], stdout: TextIO) -> CliArgs:
     """Parse the sequence of command line arguments."""
     # Avoiding argparse gives a good speed boost and the parsing logic
     # is not too complex. We won't get a full 'bells and whistles' CLI
     # experience, but that's fine for our use-case.
-    if len(argv) == 0:
-        return os.getcwd()
     if any(h in argv for h in ["-h", "--help"]):
         stdout.write(CLI_HELP)
         sys.exit(0)
     if any(v in argv for v in ["-V", "--version"]):
         stdout.write(f"pyautoenv {__version__}\n")
         sys.exit(0)
+    try:
+        argv.pop(argv.index("--fish"))
+        fish = True
+    except ValueError:
+        fish = False
+    if len(argv) == 0:
+        return CliArgs(directory=os.getcwd(), fish=fish)
     if len(argv) > 1:
         raise ValueError(  # noqa: TRY003
-            f"exactly one argument expected, found {len(argv)}",
+            f"exactly one positional argument expected, found {len(argv)}",
         )
-    return os.path.abspath(argv[0])
+    return CliArgs(directory=os.path.abspath(argv[0]), fish=fish)
 
 
 def discover_env(directory: str) -> Union[str, None]:
@@ -273,17 +290,22 @@ def poetry_project_name(directory: str) -> Union[str, None]:
     return None
 
 
-def env_activation_path(env_dir: str) -> Union[str, None]:
-    """Get the path to the activation script for the environment."""
-    if operating_system() == Os.WINDOWS:
-        path = os.path.join(env_dir, "Scripts", "Activate.ps1")
-        if os.path.isfile(path):
-            return path
-    else:
-        path = os.path.join(env_dir, "bin", "activate")
-        if os.path.isfile(path):
-            return path
+def env_activation_path(env_dir: str, *, fish: bool) -> Union[str, None]:
+    """Get the path to the activation script for the environment, if it exists."""
+    activate_script = activator(env_dir, fish=fish)
+    if os.path.isfile(activate_script):
+        return activate_script
     return None
+
+
+def activator(env_directory: str, *, fish: bool) -> str:
+    """Get the activator script for the environment in the given directory."""
+    if operating_system() == Os.WINDOWS:
+        return os.path.join(env_directory, "Scripts", "Activate.ps1")
+    path = os.path.join(env_directory, "bin", "activate")
+    if fish:
+        path += ".fish"
+    return path
 
 
 def operating_system() -> Union[int, None]:
