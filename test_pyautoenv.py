@@ -58,7 +58,7 @@ def test_operating_system_returns_enum_based_on_sys_platform(
     os_name,
     enum_value,
 ):
-    pyautoenv.Os.CURRENT = -1
+    pyautoenv.operating_system.cache_clear()
 
     with mock.patch("pyautoenv.sys.platform", new=os_name):
         assert pyautoenv.operating_system() == enum_value
@@ -132,6 +132,7 @@ class TestVenv:
     VENV_DIR = PY_PROJ / ".venv"
 
     def setup_method(self):
+        pyautoenv.operating_system.cache_clear()
         os.environ = {}  # noqa: B003
 
     @pytest.fixture(autouse=True)
@@ -279,6 +280,7 @@ class PoetryTester:
     POETRY_PROJ = Path("python_project")
 
     def setup_method(self):
+        pyautoenv.operating_system.cache_clear()
         self.os_patch = mock.patch(OPERATING_SYSTEM, return_value=self.OS)
         self.os_patch.start()
 
