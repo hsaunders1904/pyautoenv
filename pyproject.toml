@@ -76,6 +76,10 @@ select = [
   "YTT",
 ]
 ignore = [
+    # ignore require typing for 'self' arguments
+  "ANN101",
+  # ignore require docstring for '__init__' methods
+  "D107",
   # ignore multiline comments should start on first line
   "D212",
   # ignore one-blank line before class

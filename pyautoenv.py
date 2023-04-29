@@ -23,7 +23,6 @@ contain a 'poetry.lock' file.
 """
 import os
 import sys
-from dataclasses import dataclass
 from functools import lru_cache
 from typing import List, TextIO, Union
 
@@ -41,12 +40,12 @@ options:
 """
 
 
-@dataclass
 class CliArgs:
     """Holder for command line arguments."""
 
-    directory: str
-    fish: bool
+    def __init__(self, directory: str, *, fish: bool) -> None:
+        self.directory = directory
+        self.fish = fish
 
 
 class Os:
