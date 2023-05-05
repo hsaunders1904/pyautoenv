@@ -41,7 +41,7 @@ options:
 
 
 class CliArgs:
-    """Holder for command line arguments."""
+    """Container for command line arguments."""
 
     def __init__(self, directory: str, *, fish: bool) -> None:
         self.directory = directory
@@ -112,24 +112,36 @@ def discover_env(directory: str) -> Union[str, None]:
 
 def get_virtual_env(directory: str) -> Union[str, None]:
     """Return the environment if defined in the given directory."""
-    if has_venv(directory):
-        return os.path.join(directory, ".venv")
+    if venv_dir := has_venv(directory):
+        return venv_dir
     if has_poetry_env(directory) and (env_path := poetry_env_path(directory)):
         return env_path
     return None
 
 
-def has_venv(directory: str) -> bool:
+def has_venv(directory: str) -> Union[str, None]:
     """Return true if the given directory contains a project with a venv."""
-    candidate_path = venv_path(directory)
-    return os.path.isfile(candidate_path)
+    candidate_paths = venv_path(directory)
+    for path in candidate_paths:
+        if os.path.isfile(activator(path)):
+            return path
+    return None
 
 
-def venv_path(directory: str) -> str:
+def venv_path(directory: str) -> List[str]:
     """Get the path to the activate script for a venv."""
-    if operating_system() == Os.WINDOWS:
-        return os.path.join(directory, ".venv", "Scripts", "Activate.ps1")
-    return os.path.join(directory, ".venv", "bin", "activate")
+    venv_paths = []
+    for venv_name in venv_dir_names():
+        activator_path = os.path.join(directory, venv_name)
+        venv_paths.append(activator_path)
+    return venv_paths
+
+
+def venv_dir_names() -> List[str]:
+    """Get the possible names for a venv directory."""
+    if name_list := os.environ.get("PYAUTOENV_VENV_NAME", ""):
+        return [x for x in name_list.split(";") if x]
+    return [".venv"]
 
 
 def has_poetry_env(directory: str) -> bool:
@@ -296,7 +308,7 @@ def env_activation_path(env_dir: str, *, fish: bool) -> Union[str, None]:
     return None
 
 
-def activator(env_directory: str, *, fish: bool) -> str:
+def activator(env_directory: str, *, fish: bool = False) -> str:
     """Get the activator script for the environment in the given directory."""
     if operating_system() == Os.WINDOWS:
         return os.path.join(env_directory, "Scripts", "Activate.ps1")

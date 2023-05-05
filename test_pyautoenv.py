@@ -252,6 +252,52 @@ class TestVenv:
             stdout.getvalue() == f". {self.VENV_DIR / 'bin'/ 'activate.fish'}"
         )
 
+    @pytest.mark.parametrize(("os_name", "activator"), OS_NAME_ACTIVATORS)
+    def test_venv_dir_name_taken_from_environment_variable(
+        self,
+        os_name,
+        activator,
+        fs,
+    ):
+        stdout = StringIO()
+        venv_activate = self.PY_PROJ / "venv" / activator
+        fs.create_file(venv_activate)
+        os.environ["PYAUTOENV_VENV_NAME"] = "foo;venv;other_venv"
+
+        with mock.patch(OPERATING_SYSTEM, return_value=os_name):
+            assert pyautoenv.main([str(self.PY_PROJ)], stdout) == 0
+        assert stdout.getvalue() == f". {venv_activate}"
+
+    @pytest.mark.parametrize(("os_name", "activator"), OS_NAME_ACTIVATORS)
+    def test_first_existing_venv_name_taken_from_environment_variable(
+        self,
+        os_name,
+        activator,
+        fs,
+    ):
+        stdout = StringIO()
+        venv_activate = self.PY_PROJ / "venv" / activator
+        fs.create_file(venv_activate)
+        fs.create_file(self.PY_PROJ / "other_venv" / activator)
+        os.environ["PYAUTOENV_VENV_NAME"] = "foo;venv;other_venv"
+
+        with mock.patch(OPERATING_SYSTEM, return_value=os_name):
+            assert pyautoenv.main([str(self.PY_PROJ)], stdout) == 0
+        assert stdout.getvalue() == f". {venv_activate}"
+
+    @pytest.mark.parametrize(("os_name", "activator"), OS_NAME_ACTIVATORS)
+    def test_venv_dir_name_environment_variable_ignored_if_set_but_empty(
+        self,
+        os_name,
+        activator,
+    ):
+        stdout = StringIO()
+        os.environ["PYAUTOENV_VENV_NAME"] = ""
+
+        with mock.patch(OPERATING_SYSTEM, return_value=os_name):
+            assert pyautoenv.main([str(self.PY_PROJ)], stdout) == 0
+        assert stdout.getvalue() == f". {self.VENV_DIR / activator}"
+
 
 class PoetryTester:
     """

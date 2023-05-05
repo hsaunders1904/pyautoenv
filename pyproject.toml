@@ -86,6 +86,8 @@ ignore = [
   "D203",
   # ignore implicit return None
   "RET502",
+  # allow declaring error messages inside a raise call
+  "TRY003"
 ]
 unfixable = [
   # do not auto-remove commented out code
