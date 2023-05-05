@@ -23,10 +23,10 @@ Supports Python versions 3.8 and up.
 
 Follow the installation instructions for your favourite shell.
 
-You can disable `pyautoenv` by setting the
-`PYAUTOENV_DISABLE` environment variable to a non-zero value.
-
 ### Zsh
+
+<details>
+<summary>Expand instructions</summary>
 
 If you're using [oh-my-zsh](https://ohmyz.sh/),
 clone this repo into `~/.oh-my-zsh/plugins` or `${ZSH_CUSTOM}/plugins`.
@@ -46,7 +46,12 @@ source pyauotenv.plugin.zsh
 
 Add this to your `.zshrc` to activate the application permanently.
 
+</details>
+
 ### Bash
+
+<details>
+<summary>Expand instructions</summary>
 
 To enable the application in bash, source the bash script.
 
@@ -58,7 +63,12 @@ Add this to your `.bashrc` to activate the application permanently.
 
 Note that this script will clobber the `cd` command.
 
+</details>
+
 ### Fish
+
+<details>
+<summary>Expand instructions</summary>
 
 To enable the application in fish-shell, source the fish script.
 
@@ -68,7 +78,12 @@ source <path to pyauotenv>/pyautoenv.fish
 
 Add this to your `config.fish` file to activate the application permanently.
 
+</details>
+
 ### PowerShell
+
+<details>
+<summary>Expand instructions</summary>
 
 To enable the application in PowerShell, dot the `.ps1` file.
 
@@ -80,3 +95,18 @@ Add this to your profile to activate the application permanently.
 
 Note that this script re-aliases `cd`
 and only PowerShell running on Windows is supported.
+
+</details>
+
+## Options
+
+There are some environment variables you can set to configure `pyautoenv`.
+
+- `PYAUTOENV_DISABLE`: Set to a non-zero value to disable all functionality.
+- `PYAUTOENV_VENV_NAME`:
+  If you name your virtualenv directories something other than `.venv`,
+  you can use this to override directory names to search within.
+  Use `;` as a delimiter to separate directory names.
+  For example, if set to `.venv;venv`, on each directory change,
+  `pyautoenv` will look for an environment within `.venv`,
+  if that directory does not exist, it will look for an environment in `venv`.
