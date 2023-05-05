@@ -38,6 +38,7 @@ options:
   -h, --help     show this help message and exit
   -V, --version  show program's version number and exit
 """
+VENV_NAMES = "PYAUTOENV_VENV_NAME"
 
 
 class CliArgs:
@@ -129,7 +130,7 @@ def get_virtual_env(directory: str) -> Union[str, None]:
 
 
 def has_venv(directory: str) -> Union[str, None]:
-    """Return true if the given directory contains a project with a venv."""
+    """Return the venv within the given directory if it contains one."""
     candidate_paths = venv_path(directory)
     for path in candidate_paths:
         if os.path.isfile(activator(path)):
@@ -138,7 +139,7 @@ def has_venv(directory: str) -> Union[str, None]:
 
 
 def venv_path(directory: str) -> List[str]:
-    """Get the path to the activate script for a venv."""
+    """Get the paths to the activate scripts for a list of candidate venvs."""
     venv_paths = []
     for venv_name in venv_dir_names():
         activator_path = os.path.join(directory, venv_name)
@@ -148,7 +149,7 @@ def venv_path(directory: str) -> List[str]:
 
 def venv_dir_names() -> List[str]:
     """Get the possible names for a venv directory."""
-    if name_list := os.environ.get("PYAUTOENV_VENV_NAME", ""):
+    if name_list := os.environ.get(VENV_NAMES, ""):
         return [x for x in name_list.split(";") if x]
     return [".venv"]
 
