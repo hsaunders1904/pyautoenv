@@ -81,17 +81,26 @@ def parse_args(argv: List[str], stdout: TextIO) -> CliArgs:
     # Avoiding argparse gives a good speed boost and the parsing logic
     # is not too complex. We won't get a full 'bells and whistles' CLI
     # experience, but that's fine for our use-case.
-    if any(h in argv for h in ["-h", "--help"]):
+
+    def parse_exit_flag(argv: List[str], flags: List[str]) -> bool:
+        return any(f in argv for f in flags)
+
+    def parse_flag(argv: List[str], flag: str) -> bool:
+        try:
+            argv.pop(argv.index(flag))
+        except ValueError:
+            return False
+        else:
+            return True
+
+    if parse_exit_flag(argv, ["-h", "--help"]):
         stdout.write(CLI_HELP)
         sys.exit(0)
-    if any(v in argv for v in ["-V", "--version"]):
+    if parse_exit_flag(argv, ["-V", "--version"]):
         stdout.write(f"pyautoenv {__version__}\n")
         sys.exit(0)
-    try:
-        argv.pop(argv.index("--fish"))
-        fish = True
-    except ValueError:
-        fish = False
+
+    fish = parse_flag(argv, "--fish")
     if len(argv) == 0:
         return CliArgs(directory=os.getcwd(), fish=fish)
     if len(argv) > 1:
