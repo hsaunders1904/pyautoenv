@@ -58,7 +58,7 @@ def test_operating_system_returns_enum_based_on_sys_platform(
     os_name,
     enum_value,
 ):
-    pyautoenv.Os.CURRENT = -1
+    pyautoenv.operating_system.cache_clear()
 
     with mock.patch("pyautoenv.sys.platform", new=os_name):
         assert pyautoenv.operating_system() == enum_value
@@ -132,6 +132,7 @@ class TestVenv:
     VENV_DIR = PY_PROJ / ".venv"
 
     def setup_method(self):
+        pyautoenv.operating_system.cache_clear()
         os.environ = {}  # noqa: B003
 
     @pytest.fixture(autouse=True)
@@ -251,6 +252,52 @@ class TestVenv:
             stdout.getvalue() == f". {self.VENV_DIR / 'bin'/ 'activate.fish'}"
         )
 
+    @pytest.mark.parametrize(("os_name", "activator"), OS_NAME_ACTIVATORS)
+    def test_venv_dir_name_taken_from_environment_variable(
+        self,
+        os_name,
+        activator,
+        fs,
+    ):
+        stdout = StringIO()
+        venv_activate = self.PY_PROJ / "venv" / activator
+        fs.create_file(venv_activate)
+        os.environ["PYAUTOENV_VENV_NAME"] = "foo;venv;other_venv"
+
+        with mock.patch(OPERATING_SYSTEM, return_value=os_name):
+            assert pyautoenv.main([str(self.PY_PROJ)], stdout) == 0
+        assert stdout.getvalue() == f". {venv_activate}"
+
+    @pytest.mark.parametrize(("os_name", "activator"), OS_NAME_ACTIVATORS)
+    def test_first_existing_venv_name_taken_from_environment_variable(
+        self,
+        os_name,
+        activator,
+        fs,
+    ):
+        stdout = StringIO()
+        venv_activate = self.PY_PROJ / "venv" / activator
+        fs.create_file(venv_activate)
+        fs.create_file(self.PY_PROJ / "other_venv" / activator)
+        os.environ["PYAUTOENV_VENV_NAME"] = "foo;venv;other_venv"
+
+        with mock.patch(OPERATING_SYSTEM, return_value=os_name):
+            assert pyautoenv.main([str(self.PY_PROJ)], stdout) == 0
+        assert stdout.getvalue() == f". {venv_activate}"
+
+    @pytest.mark.parametrize(("os_name", "activator"), OS_NAME_ACTIVATORS)
+    def test_venv_dir_name_environment_variable_ignored_if_set_but_empty(
+        self,
+        os_name,
+        activator,
+    ):
+        stdout = StringIO()
+        os.environ["PYAUTOENV_VENV_NAME"] = ""
+
+        with mock.patch(OPERATING_SYSTEM, return_value=os_name):
+            assert pyautoenv.main([str(self.PY_PROJ)], stdout) == 0
+        assert stdout.getvalue() == f". {self.VENV_DIR / activator}"
+
 
 class PoetryTester:
     """
@@ -279,6 +326,7 @@ class PoetryTester:
     POETRY_PROJ = Path("python_project")
 
     def setup_method(self):
+        pyautoenv.operating_system.cache_clear()
         self.os_patch = mock.patch(OPERATING_SYSTEM, return_value=self.OS)
         self.os_patch.start()
 

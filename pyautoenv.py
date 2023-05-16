@@ -23,7 +23,7 @@ contain a 'poetry.lock' file.
 """
 import os
 import sys
-from dataclasses import dataclass
+from functools import lru_cache
 from typing import List, TextIO, Union
 
 __version__ = "0.4.0"
@@ -38,14 +38,15 @@ options:
   -h, --help     show this help message and exit
   -V, --version  show program's version number and exit
 """
+VENV_NAMES = "PYAUTOENV_VENV_NAME"
 
 
-@dataclass
 class CliArgs:
-    """Holder for command line arguments."""
+    """Container for command line arguments."""
 
-    directory: str
-    fish: bool
+    def __init__(self, directory: str, *, fish: bool) -> None:
+        self.directory = directory
+        self.fish = fish
 
 
 class Os:
@@ -54,8 +55,6 @@ class Os:
     LINUX = 0
     MACOS = 1
     WINDOWS = 2
-    # a variable to cache the current OS once it's checked.
-    CURRENT: Union[int, None] = -1
 
 
 def main(sys_args: List[str], stdout: TextIO) -> int:
@@ -83,17 +82,26 @@ def parse_args(argv: List[str], stdout: TextIO) -> CliArgs:
     # Avoiding argparse gives a good speed boost and the parsing logic
     # is not too complex. We won't get a full 'bells and whistles' CLI
     # experience, but that's fine for our use-case.
-    if any(h in argv for h in ["-h", "--help"]):
+
+    def parse_exit_flag(argv: List[str], flags: List[str]) -> bool:
+        return any(f in argv for f in flags)
+
+    def parse_flag(argv: List[str], flag: str) -> bool:
+        try:
+            argv.pop(argv.index(flag))
+        except ValueError:
+            return False
+        else:
+            return True
+
+    if parse_exit_flag(argv, ["-h", "--help"]):
         stdout.write(CLI_HELP)
         sys.exit(0)
-    if any(v in argv for v in ["-V", "--version"]):
+    if parse_exit_flag(argv, ["-V", "--version"]):
         stdout.write(f"pyautoenv {__version__}\n")
         sys.exit(0)
-    try:
-        argv.pop(argv.index("--fish"))
-        fish = True
-    except ValueError:
-        fish = False
+
+    fish = parse_flag(argv, "--fish")
     if len(argv) == 0:
         return CliArgs(directory=os.getcwd(), fish=fish)
     if len(argv) > 1:
@@ -114,24 +122,36 @@ def discover_env(directory: str) -> Union[str, None]:
 
 def get_virtual_env(directory: str) -> Union[str, None]:
     """Return the environment if defined in the given directory."""
-    if has_venv(directory):
-        return os.path.join(directory, ".venv")
+    if venv_dir := has_venv(directory):
+        return venv_dir
     if has_poetry_env(directory) and (env_path := poetry_env_path(directory)):
         return env_path
     return None
 
 
-def has_venv(directory: str) -> bool:
-    """Return true if the given directory contains a project with a venv."""
-    candidate_path = venv_path(directory)
-    return os.path.isfile(candidate_path)
+def has_venv(directory: str) -> Union[str, None]:
+    """Return the venv within the given directory if it contains one."""
+    candidate_paths = venv_path(directory)
+    for path in candidate_paths:
+        if os.path.isfile(activator(path)):
+            return path
+    return None
 
 
-def venv_path(directory: str) -> str:
-    """Get the path to the activate script for a venv."""
-    if operating_system() == Os.WINDOWS:
-        return os.path.join(directory, ".venv", "Scripts", "Activate.ps1")
-    return os.path.join(directory, ".venv", "bin", "activate")
+def venv_path(directory: str) -> List[str]:
+    """Get the paths to the activate scripts for a list of candidate venvs."""
+    venv_paths = []
+    for venv_name in venv_dir_names():
+        activator_path = os.path.join(directory, venv_name)
+        venv_paths.append(activator_path)
+    return venv_paths
+
+
+def venv_dir_names() -> List[str]:
+    """Get the possible names for a venv directory."""
+    if name_list := os.environ.get(VENV_NAMES, ""):
+        return [x for x in name_list.split(";") if x]
+    return [".venv"]
 
 
 def has_poetry_env(directory: str) -> bool:
@@ -298,32 +318,34 @@ def env_activation_path(env_dir: str, *, fish: bool) -> Union[str, None]:
     return None
 
 
-def activator(env_directory: str, *, fish: bool) -> str:
+def activator(env_directory: str, *, fish: bool = False) -> str:
     """Get the activator script for the environment in the given directory."""
-    if operating_system() == Os.WINDOWS:
-        return os.path.join(env_directory, "Scripts", "Activate.ps1")
-    path = os.path.join(env_directory, "bin", "activate")
+    activate = "activate"
+    dir_name = "bin"
+    extension = ""
     if fish:
-        path += ".fish"
-    return path
+        extension = ".fish"
+    elif operating_system() == Os.WINDOWS:
+        activate = activate.title()
+        dir_name = "Scripts"
+        extension = ".ps1"
+    return os.path.join(env_directory, dir_name, f"{activate}{extension}")
 
 
+@lru_cache
 def operating_system() -> Union[int, None]:
     """
     Return the operating system the script's being run on.
 
     Return 'None' if we're on an operating system we can't handle.
     """
-    if Os.CURRENT == -1:
-        if sys.platform.startswith("darwin"):
-            Os.CURRENT = Os.MACOS
-        elif sys.platform.startswith("win"):
-            Os.CURRENT = Os.WINDOWS
-        elif sys.platform.startswith("linux"):
-            Os.CURRENT = Os.LINUX
-        else:
-            Os.CURRENT = None
-    return Os.CURRENT
+    if sys.platform.startswith("darwin"):
+        return Os.MACOS
+    if sys.platform.startswith("win"):
+        return Os.WINDOWS
+    if sys.platform.startswith("linux"):
+        return Os.LINUX
+    return None
 
 
 if __name__ == "__main__":

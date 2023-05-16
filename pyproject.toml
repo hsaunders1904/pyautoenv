@@ -76,12 +76,18 @@ select = [
   "YTT",
 ]
 ignore = [
+    # ignore require typing for 'self' arguments
+  "ANN101",
+  # ignore require docstring for '__init__' methods
+  "D107",
   # ignore multiline comments should start on first line
   "D212",
   # ignore one-blank line before class
   "D203",
   # ignore implicit return None
   "RET502",
+  # allow declaring error messages inside a raise call
+  "TRY003"
 ]
 unfixable = [
   # do not auto-remove commented out code
