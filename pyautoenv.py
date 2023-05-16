@@ -320,12 +320,16 @@ def env_activation_path(env_dir: str, *, fish: bool) -> Union[str, None]:
 
 def activator(env_directory: str, *, fish: bool = False) -> str:
     """Get the activator script for the environment in the given directory."""
-    if operating_system() == Os.WINDOWS:
-        return os.path.join(env_directory, "Scripts", "Activate.ps1")
-    path = os.path.join(env_directory, "bin", "activate")
+    activate = "activate"
+    dir_name = "bin"
+    extension = ""
     if fish:
-        path += ".fish"
-    return path
+        extension = ".fish"
+    elif operating_system() == Os.WINDOWS:
+        activate = activate.title()
+        dir_name = "Scripts"
+        extension = ".ps1"
+    return os.path.join(env_directory, dir_name, f"{activate}{extension}")
 
 
 @lru_cache
