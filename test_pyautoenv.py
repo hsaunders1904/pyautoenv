@@ -117,8 +117,30 @@ class TestParseArgs:
 
         assert args.fish is True
 
+    @pytest.mark.parametrize("argv", [[], ["path"], ["--fish"]])
+    def test_pwsh_false_given_no_flag(self, argv):
+        args = pyautoenv.parse_args(argv, self.stdout)
+
+        assert args.pwsh is False
+
+    @pytest.mark.parametrize(
+        "argv",
+        [["--pwsh"], ["path", "--pwsh"], ["--pwsh", "path"]],
+    )
+    def test_pwsh_true_given_flag(self, argv):
+        args = pyautoenv.parse_args(argv, self.stdout)
+
+        assert args.pwsh is True
+
+    @pytest.mark.parametrize("argv_prefix", [[], ["path"]])
+    def test_raises_value_error_given_more_than_one_flag(self, argv_prefix):
+        argv = argv_prefix + ["--pwsh", "--fish"]
+
+        with pytest.raises(ValueError):
+            pyautoenv.parse_args(argv, self.stdout)
+
     def test_raises_value_error_given_more_than_two_args(self):
-        with pytest.raises(ValueError):  # noqa: PT011
+        with pytest.raises(ValueError):
             pyautoenv.parse_args(["/some/dir", "/another/dir"], self.stdout)
 
 

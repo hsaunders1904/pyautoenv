@@ -35,18 +35,22 @@ positional arguments:
 
 options:
   --fish         use fish activation script
+  --pwsh         use powershell activation script
   -h, --help     show this help message and exit
   -V, --version  show program's version number and exit
 """
 VENV_NAMES = "PYAUTOENV_VENV_NAME"
 
 
-class CliArgs:
+class Args:
     """Container for command line arguments."""
 
-    def __init__(self, directory: str, *, fish: bool) -> None:
+    def __init__(
+        self, directory: str, *, fish: bool = False, pwsh: bool = False
+    ) -> None:
         self.directory = directory
         self.fish = fish
+        self.pwsh = pwsh
 
 
 class Os:
@@ -77,7 +81,7 @@ def main(sys_args: List[str], stdout: TextIO) -> int:
     return 0
 
 
-def parse_args(argv: List[str], stdout: TextIO) -> CliArgs:
+def parse_args(argv: List[str], stdout: TextIO) -> Args:
     """Parse the sequence of command line arguments."""
     # Avoiding argparse gives a good speed boost and the parsing logic
     # is not too complex. We won't get a full 'bells and whistles' CLI
@@ -102,13 +106,18 @@ def parse_args(argv: List[str], stdout: TextIO) -> CliArgs:
         sys.exit(0)
 
     fish = parse_flag(argv, "--fish")
-    if len(argv) == 0:
-        return CliArgs(directory=os.getcwd(), fish=fish)
+    pwsh = parse_flag(argv, "--pwsh")
+    num_activators = sum([fish, pwsh])
+    if num_activators > 1:
+        raise ValueError(
+            f"zero or one activator flag expected, found {num_activators}",
+        )
     if len(argv) > 1:
-        raise ValueError(  # noqa: TRY003
+        raise ValueError(
             f"exactly one positional argument expected, found {len(argv)}",
         )
-    return CliArgs(directory=os.path.abspath(argv[0]), fish=fish)
+    directory = os.path.abspath(argv[0]) if len(argv) else os.getcwd()
+    return Args(directory=directory, fish=fish, pwsh=pwsh)
 
 
 def discover_env(directory: str) -> Union[str, None]:

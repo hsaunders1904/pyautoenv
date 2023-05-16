@@ -87,7 +87,9 @@ ignore = [
   # ignore implicit return None
   "RET502",
   # allow declaring error messages inside a raise call
-  "TRY003"
+  "TRY003",
+  # allow expecting raise of ValueError in tests
+  "PT011",
 ]
 unfixable = [
   # do not auto-remove commented out code
