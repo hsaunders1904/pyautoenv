@@ -66,16 +66,16 @@ def main(sys_args: List[str], stdout: TextIO) -> int:
     args = parse_args(sys_args, stdout)
     if not os.path.isdir(args.directory):
         return 1
-    new_env_path = discover_env(args.directory)
+    new_env_path = discover_env(args)
     if active_env_path := os.environ.get("VIRTUAL_ENV", None):
         if not new_env_path:
             stdout.write("deactivate")
         elif not os.path.samefile(new_env_path, active_env_path):
             stdout.write("deactivate")
-            if activate := env_activation_path(new_env_path, fish=args.fish):
+            if activate := env_activation_path(new_env_path, args):
                 stdout.write(f" && . {activate}")
     elif new_env_path and (
-        activate := env_activation_path(new_env_path, fish=args.fish)
+        activate := env_activation_path(new_env_path, args)
     ):
         stdout.write(f". {activate}")
     return 0
@@ -112,6 +112,9 @@ def parse_args(argv: List[str], stdout: TextIO) -> Args:
         raise ValueError(
             f"zero or one activator flag expected, found {num_activators}",
         )
+    argv = [
+        a for a in argv if a.strip()
+    ]  # ignore empty arguments TODO(hsaunders1904): test this
     if len(argv) > 1:
         raise ValueError(
             f"exactly one positional argument expected, found {len(argv)}",
@@ -120,38 +123,40 @@ def parse_args(argv: List[str], stdout: TextIO) -> Args:
     return Args(directory=directory, fish=fish, pwsh=pwsh)
 
 
-def discover_env(directory: str) -> Union[str, None]:
+def discover_env(args: Args) -> Union[str, None]:
     """Find an environment in the given directory or any of its parents."""
-    while directory != os.path.dirname(directory):
-        if env_dir := get_virtual_env(directory):
+    while args.directory != os.path.dirname(args.directory):
+        if env_dir := get_virtual_env(args):
             return env_dir
-        directory = os.path.dirname(directory)
+        args.directory = os.path.dirname(args.directory)
     return None
 
 
-def get_virtual_env(directory: str) -> Union[str, None]:
+def get_virtual_env(args: Args) -> Union[str, None]:
     """Return the environment if defined in the given directory."""
-    if venv_dir := has_venv(directory):
+    if venv_dir := has_venv(args):
         return venv_dir
-    if has_poetry_env(directory) and (env_path := poetry_env_path(directory)):
+    if has_poetry_env(args.directory) and (
+        env_path := poetry_env_path(args.directory)
+    ):
         return env_path
     return None
 
 
-def has_venv(directory: str) -> Union[str, None]:
+def has_venv(args: Args) -> Union[str, None]:
     """Return the venv within the given directory if it contains one."""
-    candidate_paths = venv_path(directory)
+    candidate_paths = venv_path(args)
     for path in candidate_paths:
-        if os.path.isfile(activator(path)):
+        if os.path.isfile(activator(path, args)):
             return path
     return None
 
 
-def venv_path(directory: str) -> List[str]:
+def venv_path(args: Args) -> List[str]:
     """Get the paths to the activate scripts for a list of candidate venvs."""
     venv_paths = []
     for venv_name in venv_dir_names():
-        activator_path = os.path.join(directory, venv_name)
+        activator_path = os.path.join(args.directory, venv_name)
         venv_paths.append(activator_path)
     return venv_paths
 
@@ -319,24 +324,25 @@ def poetry_project_name(directory: str) -> Union[str, None]:
     return None
 
 
-def env_activation_path(env_dir: str, *, fish: bool) -> Union[str, None]:
+def env_activation_path(env_dir: str, args: Args) -> Union[str, None]:
     """Get the path to the activation script for the environment, if it exists."""
-    activate_script = activator(env_dir, fish=fish)
+    activate_script = activator(env_dir, args)
     if os.path.isfile(activate_script):
         return activate_script
     return None
 
 
-def activator(env_directory: str, *, fish: bool = False) -> str:
+def activator(env_directory: str, args: Args) -> str:
     """Get the activator script for the environment in the given directory."""
     activate = "activate"
     dir_name = "bin"
     extension = ""
-    if fish:
-        extension = ".fish"
-    elif operating_system() == Os.WINDOWS:
-        activate = activate.title()
+    if operating_system() == Os.WINDOWS:
         dir_name = "Scripts"
+    if args.fish:
+        extension = ".fish"
+    elif args.pwsh:
+        activate = activate.title()
         extension = ".ps1"
     return os.path.join(env_directory, dir_name, f"{activate}{extension}")
 
