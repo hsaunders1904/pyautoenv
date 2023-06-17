@@ -242,7 +242,7 @@ class PoetryLinuxTester(PoetryTester):
     )
 
 
-class TestPoetryShLinux(PoetryLinuxTester):
+class TestPoetryBashLinux(PoetryLinuxTester):
     activator = Path("bin/activate")
     flag = ""
 
@@ -274,7 +274,7 @@ class PoetryMacosTester(PoetryTester):
     )
 
 
-class TestPoetryShMacos(PoetryMacosTester):
+class TestPoetryBashMacos(PoetryMacosTester):
     activator = Path("bin/activate")
     flag = ""
 

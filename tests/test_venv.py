@@ -152,7 +152,7 @@ class VenvTester(abc.ABC):
         assert stdout.getvalue() == f". {self.VENV_DIR / self.activator}"
 
 
-class TestVenvShLinux(VenvTester):
+class TestVenvBashLinux(VenvTester):
     activator = "bin/activate"
     flag = ""
     os = pyautoenv.Os.LINUX
