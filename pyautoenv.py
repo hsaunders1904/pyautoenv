@@ -331,15 +331,13 @@ def poetry_project_name(directory: str) -> Union[str, None]:
 
 def activator(env_directory: str, args: Args) -> str:
     """Get the activator script for the environment in the given directory."""
-    activate = "activate"
     dir_name = "Scripts" if operating_system() == Os.WINDOWS else "bin"
-    extension = ""
+    script = "activate"
     if args.fish:
-        extension = ".fish"
+        script = "activate.fish"
     elif args.pwsh:
-        activate = "Activate"
-        extension = ".ps1"
-    return os.path.join(env_directory, dir_name, f"{activate}{extension}")
+        script = "Activate.ps1"
+    return os.path.join(env_directory, dir_name, f"{script}")
 
 
 @lru_cache
