@@ -76,7 +76,7 @@ select = [
   "YTT",
 ]
 ignore = [
-    # ignore require typing for 'self' arguments
+  # ignore require typing for 'self' arguments
   "ANN101",
   # ignore require docstring for '__init__' methods
   "D107",
@@ -102,7 +102,10 @@ unfixable = [
 
 [tool.ruff.per-file-ignores]
 "test_*.py" = [
+  # do not required documentation for tests
   "D",
+  # do not require type annotations in tests
   "ANN",
+  # allow use of assert
   "S101",
 ]
