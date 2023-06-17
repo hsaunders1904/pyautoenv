@@ -96,6 +96,8 @@ unfixable = [
   "ERA001",
   # do not auto-remove unused variables
   "F841",
+  # do not auto-remove unused imports
+  "F401",
 ]
 
 [tool.ruff.per-file-ignores]
