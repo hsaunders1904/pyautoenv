@@ -138,16 +138,16 @@ def discover_env(args: Args) -> Union[str, None]:
 
 
 def get_virtual_env(args: Args) -> Union[str, None]:
-    """Return the environment if defined in the given directory."""
-    if venv_dir := has_venv(args):
+    """Return the activator for the venv if defined in the given directory."""
+    if venv_dir := venv_activator(args):
         return venv_dir
-    if has_poetry_env(args.directory) and (env_path := poetry_env_path(args)):
+    if has_poetry_env(args.directory) and (env_path := poetry_activator(args)):
         return env_path
     return None
 
 
-def has_venv(args: Args) -> Union[str, None]:
-    """Return the venv within the given directory if it contains one."""
+def venv_activator(args: Args) -> Union[str, None]:
+    """Return the venv activator within the given directory if it contains one."""
     candidate_paths = venv_path(args)
     for path in candidate_paths:
         activate_script = activator(path, args)
@@ -157,7 +157,7 @@ def has_venv(args: Args) -> Union[str, None]:
 
 
 def venv_path(args: Args) -> List[str]:
-    """Get the paths to the activate scripts for a list of candidate venvs."""
+    """Get the paths to a list of candidate venvs within the given directory."""
     venv_paths = []
     for venv_name in venv_dir_names():
         activator_path = os.path.join(args.directory, venv_name)
@@ -177,9 +177,9 @@ def has_poetry_env(directory: str) -> bool:
     return os.path.isfile(os.path.join(directory, "poetry.lock"))
 
 
-def poetry_env_path(args: Args) -> Union[str, None]:
+def poetry_activator(args: Args) -> Union[str, None]:
     """
-    Return the path of the venv associated with a poetry project directory.
+    Return the activator for the venv associated with a poetry project directory.
 
     If there are multiple poetry environments, pick the one with the
     latest modification time.

@@ -118,7 +118,7 @@ class VenvTester(abc.ABC):
         assert pyautoenv.main(["pyproj2", self.flag], stdout=stdout) == 0
         assert stdout.getvalue() == f"deactivate && . {new_venv_activate}"
 
-    @mock.patch("pyautoenv.poetry_env_path")
+    @mock.patch("pyautoenv.poetry_activator")
     def test_deactivate_and_activate_switching_to_poetry(
         self,
         poetry_env_mock,
@@ -128,15 +128,13 @@ class VenvTester(abc.ABC):
         activate_venv(self.VENV_DIR)
         # create a poetry venv to switch into
         poetry_env = Path("poetry_proj-X-py3.8")
-        poetry_env_mock.return_value = poetry_env / self.activator
+        activator = poetry_env / self.activator
+        poetry_env_mock.return_value = activator
         fs = make_poetry_project(fs, "project", Path("/poetry_proj"))
-        fs.create_file(poetry_env / self.activator)
+        fs.create_file(activator)
 
         assert pyautoenv.main(["poetry_proj", self.flag], stdout) == 0
-        assert (
-            stdout.getvalue()
-            == f"deactivate && . {poetry_env / self.activator}"
-        )
+        assert stdout.getvalue() == f"deactivate && . {activator}"
 
     def test_does_nothing_if_activate_script_is_not_file(self, fs):
         stdout = StringIO()
