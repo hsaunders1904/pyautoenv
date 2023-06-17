@@ -17,9 +17,10 @@
 """
 Print a command to activate or deactivate a Python venv based on a directory.
 
-Supports environments managed by venv and poetry. A venv project directory
-must contain a directory called '.venv', a poetry project directory must
-contain a 'poetry.lock' file.
+Supports environments managed by venv or poetry. A poetry project
+directory must contain a 'poetry.lock' file. A venv project must contain
+a directory called '.venv' or one of the names in the
+'PYAUTOENV_VENV_NAME' environment variable (names separated by a ';').
 """
 import os
 import sys
