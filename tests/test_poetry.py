@@ -146,7 +146,7 @@ class PoetryTester(abc.ABC):
         stdout = StringIO()
         fs.remove_object(str(self.venv_dir))
 
-        assert pyautoenv.main([str(self.python_proj)], stdout) == 0
+        assert pyautoenv.main([str(self.python_proj), self.flag], stdout) == 0
         assert not stdout.getvalue()
 
     def test_poetry_cache_dir_env_var_used_if_set_and_dir_exists(self, fs):
