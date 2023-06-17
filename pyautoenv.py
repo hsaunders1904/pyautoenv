@@ -46,7 +46,11 @@ class Args:
     """Container for command line arguments."""
 
     def __init__(
-        self, directory: str, *, fish: bool = False, pwsh: bool = False
+        self,
+        directory: str,
+        *,
+        fish: bool = False,
+        pwsh: bool = False,
     ) -> None:
         self.directory = directory
         self.fish = fish
@@ -66,19 +70,21 @@ def main(sys_args: List[str], stdout: TextIO) -> int:
     args = parse_args(sys_args, stdout)
     if not os.path.isdir(args.directory):
         return 1
-    new_env_path = discover_env(args)
-    if active_env_path := os.environ.get("VIRTUAL_ENV", None):
-        if not new_env_path:
+    new_activator = discover_env(args)
+    if active_env_dir := os.environ.get("VIRTUAL_ENV", None):
+        if not new_activator:
             stdout.write("deactivate")
-        elif not os.path.samefile(new_env_path, active_env_path):
-            stdout.write("deactivate")
-            if activate := env_activation_path(new_env_path, args):
-                stdout.write(f" && . {activate}")
-    elif new_env_path and (
-        activate := env_activation_path(new_env_path, args)
-    ):
-        stdout.write(f". {activate}")
+        elif not activator_in_venv(new_activator, active_env_dir):
+            stdout.write(f"deactivate && . {new_activator}")
+    elif new_activator and os.path.isfile(new_activator):
+        stdout.write(f". {new_activator}")
     return 0
+
+
+def activator_in_venv(activator: str, venv_dir: str) -> bool:
+    """Return True if the given activator is in the given venv directory."""
+    activator_venv_dir = os.path.dirname(os.path.dirname(activator))
+    return os.path.samefile(activator_venv_dir, venv_dir)
 
 
 def parse_args(argv: List[str], stdout: TextIO) -> Args:
@@ -112,9 +118,8 @@ def parse_args(argv: List[str], stdout: TextIO) -> Args:
         raise ValueError(
             f"zero or one activator flag expected, found {num_activators}",
         )
-    argv = [
-        a for a in argv if a.strip()
-    ]  # ignore empty arguments TODO(hsaunders1904): test this
+    # ignore empty arguments TODO(hsaunders1904): test this
+    argv = [a for a in argv if a.strip()]
     if len(argv) > 1:
         raise ValueError(
             f"exactly one positional argument expected, found {len(argv)}",
@@ -136,9 +141,7 @@ def get_virtual_env(args: Args) -> Union[str, None]:
     """Return the environment if defined in the given directory."""
     if venv_dir := has_venv(args):
         return venv_dir
-    if has_poetry_env(args.directory) and (
-        env_path := poetry_env_path(args.directory)
-    ):
+    if has_poetry_env(args.directory) and (env_path := poetry_env_path(args)):
         return env_path
     return None
 
@@ -147,8 +150,9 @@ def has_venv(args: Args) -> Union[str, None]:
     """Return the venv within the given directory if it contains one."""
     candidate_paths = venv_path(args)
     for path in candidate_paths:
-        if os.path.isfile(activator(path, args)):
-            return path
+        activate_script = activator(path, args)
+        if os.path.isfile(activate_script):
+            return activate_script
     return None
 
 
@@ -173,15 +177,16 @@ def has_poetry_env(directory: str) -> bool:
     return os.path.isfile(os.path.join(directory, "poetry.lock"))
 
 
-def poetry_env_path(directory: str) -> Union[str, None]:
+def poetry_env_path(args: Args) -> Union[str, None]:
     """
     Return the path of the venv associated with a poetry project directory.
 
     If there are multiple poetry environments, pick the one with the
     latest modification time.
     """
-    if env_list := poetry_env_list(directory):
-        return max(env_list, key=lambda p: os.stat(p).st_mtime)
+    if env_list := poetry_env_list(args.directory):
+        env_dir = max(env_list, key=lambda p: os.stat(p).st_mtime)
+        return activator(env_dir, args)
     return None
 
 
@@ -324,25 +329,15 @@ def poetry_project_name(directory: str) -> Union[str, None]:
     return None
 
 
-def env_activation_path(env_dir: str, args: Args) -> Union[str, None]:
-    """Get the path to the activation script for the environment, if it exists."""
-    activate_script = activator(env_dir, args)
-    if os.path.isfile(activate_script):
-        return activate_script
-    return None
-
-
 def activator(env_directory: str, args: Args) -> str:
     """Get the activator script for the environment in the given directory."""
     activate = "activate"
-    dir_name = "bin"
+    dir_name = "Scripts" if operating_system() == Os.WINDOWS else "bin"
     extension = ""
-    if operating_system() == Os.WINDOWS:
-        dir_name = "Scripts"
     if args.fish:
         extension = ".fish"
     elif args.pwsh:
-        activate = activate.title()
+        activate = "Activate"
         extension = ".ps1"
     return os.path.join(env_directory, dir_name, f"{activate}{extension}")
 
