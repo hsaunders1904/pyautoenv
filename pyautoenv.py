@@ -82,9 +82,9 @@ def main(sys_args: List[str], stdout: TextIO) -> int:
     return 0
 
 
-def activator_in_venv(activator: str, venv_dir: str) -> bool:
+def activator_in_venv(activator_path: str, venv_dir: str) -> bool:
     """Return True if the given activator is in the given venv directory."""
-    activator_venv_dir = os.path.dirname(os.path.dirname(activator))
+    activator_venv_dir = os.path.dirname(os.path.dirname(activator_path))
     return os.path.samefile(activator_venv_dir, venv_dir)
 
 
@@ -102,8 +102,7 @@ def parse_args(argv: List[str], stdout: TextIO) -> Args:
             argv.pop(argv.index(flag))
         except ValueError:
             return False
-        else:
-            return True
+        return True
 
     if parse_exit_flag(argv, ["-h", "--help"]):
         stdout.write(CLI_HELP)
@@ -119,7 +118,7 @@ def parse_args(argv: List[str], stdout: TextIO) -> Args:
         raise ValueError(
             f"zero or one activator flag expected, found {num_activators}",
         )
-    # ignore empty arguments TODO(hsaunders1904): test this
+    # ignore empty arguments
     argv = [a for a in argv if a.strip()]
     if len(argv) > 1:
         raise ValueError(
@@ -333,11 +332,12 @@ def poetry_project_name(directory: str) -> Union[str, None]:
 def activator(env_directory: str, args: Args) -> str:
     """Get the activator script for the environment in the given directory."""
     dir_name = "Scripts" if operating_system() == Os.WINDOWS else "bin"
-    script = "activate"
     if args.fish:
         script = "activate.fish"
     elif args.pwsh:
         script = "Activate.ps1"
+    else:
+        script = "activate"
     return os.path.join(env_directory, dir_name, f"{script}")
 
 

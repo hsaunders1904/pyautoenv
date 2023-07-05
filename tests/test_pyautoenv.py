@@ -128,3 +128,12 @@ class TestParseArgs:
     def test_raises_value_error_given_more_than_two_args(self):
         with pytest.raises(ValueError):
             pyautoenv.parse_args(["/some/dir", "/another/dir"], self.stdout)
+
+    def test_empty_args_are_ignored(self):
+        argv = ["   ", "\t", "/some/dir", ""]
+
+        args = pyautoenv.parse_args(argv, self.stdout)
+
+        assert args.directory == "/some/dir"
+        assert args.fish is False
+        assert args.pwsh is False
