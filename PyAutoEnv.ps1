@@ -32,7 +32,7 @@ function Invoke-PyAutoEnv() {
   if (${Env:PYAUTOENV_DISABLE} -ne 0 -And "${Env:PYAUTOENV_DISABLE}" -ne "") {
     return
   }
-  if (-Not (Test-Command python)) {
+  if (-Not (Get-Command "python" -ErrorAction SilentlyContinue)) {
     return
   }
   $PyAutoEnv = Join-Path "${PyAutoEnvDir}" "pyautoenv.py"
