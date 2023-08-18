@@ -24,6 +24,7 @@ import pytest
 import pyautoenv
 from tests.tools import root_dir
 
+
 def test_main_does_nothing_given_directory_does_not_exist():
     stdout = StringIO()
 
