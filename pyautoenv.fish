@@ -19,10 +19,10 @@ if ! status --is-interactive
     exit 0
 end
 
-set _pyautoenv_path "$(dirname (path resolve (status --current-filename)))"
+set _pyautoenv_path (dirname (realpath (status current-filename)))
 
 function _pyautoenv_activate --on-variable PWD \
-        --description 'Activate/deactivate python environment based on current environment'
+        --description 'Activate/deactivate python environments based on the current directory'
     if test -n "$PYAUTOENV_DISABLE"; and test "$PYAUTOENV_DISABLE" != "0"
         return
     end
@@ -31,7 +31,7 @@ function _pyautoenv_activate --on-variable PWD \
     end
     set _pyautoenv_py "$_pyautoenv_path/pyautoenv.py"
     if test -f "$_pyautoenv_py"
-        eval "$(python3 "$_pyautoenv_py" --fish)"
+        eval (python3 "$_pyautoenv_py" --fish)
     end
 end
 
