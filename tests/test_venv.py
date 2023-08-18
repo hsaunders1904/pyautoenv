@@ -49,6 +49,7 @@ class VenvTester(abc.ABC):
 
     def setup_method(self):
         pyautoenv.operating_system.cache_clear()
+        pyautoenv.poetry_cache_dir.cache_clear()
         os.environ = {}  # noqa: B003
         self.os_patch = mock.patch(OPERATING_SYSTEM, return_value=self.os)
         self.os_patch.start()

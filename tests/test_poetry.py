@@ -34,8 +34,15 @@ from tests.tools import (
 
 
 class PoetryTester(abc.ABC):
-    python_proj = Path("python_project")
-    not_poetry_proj = Path("not_a_poetry_proj")
+    @property
+    def python_proj(self) -> Path:
+        """The path to the python project we're creating a test env for."""
+        return Path("python_project")
+
+    @property
+    def not_poetry_proj(self) -> Path:
+        """The path to directory that does not contain an poetry project."""
+        return Path("not_a_poetry_proj")
 
     @abc.abstractproperty
     def os(self) -> int:
@@ -75,13 +82,14 @@ class PoetryTester(abc.ABC):
         fs.create_dir(self.python_proj / "src")
         fs.create_dir(self.not_poetry_proj)
         fs.create_file(self.venv_dir / "bin" / "activate")
-        fs.create_file(self.venv_dir / "bin" / "Activate.ps1")
-        fs.create_file(self.venv_dir / "bin" / "Activate.fish")
+        fs.create_file(self.venv_dir / "bin" / "activate.ps1")
+        fs.create_file(self.venv_dir / "bin" / "activate.fish")
         fs.create_file(self.venv_dir / "Scripts" / "Activate.ps1")
         return fs
 
     def setup_method(self):
         pyautoenv.operating_system.cache_clear()
+        pyautoenv.poetry_cache_dir.cache_clear()
         self.os_patch = mock.patch(OPERATING_SYSTEM, return_value=self.os)
         self.os_patch.start()
         os.environ = copy.deepcopy(self.env)  # noqa: B003
@@ -263,7 +271,7 @@ class TestPoetryBashLinux(PoetryLinuxTester):
 
 
 class TestPoetryPwshLinux(PoetryLinuxTester):
-    activator = Path("bin/Activate.ps1")
+    activator = Path("bin/activate.ps1")
     flag = "--pwsh"
 
 
@@ -295,7 +303,7 @@ class TestPoetryBashMacos(PoetryMacosTester):
 
 
 class TestPoetryPwshMacos(PoetryMacosTester):
-    activator = Path("bin/Activate.ps1")
+    activator = Path("bin/activate.ps1")
     flag = "--pwsh"
 
 
