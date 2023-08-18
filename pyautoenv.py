@@ -77,7 +77,10 @@ def main(sys_args: list[str], stdout: TextIO) -> int:
     if active_env_dir := os.environ.get("VIRTUAL_ENV", None):
         if not new_activator:
             stdout.write("deactivate")
-        elif not activator_in_venv(new_activator, active_env_dir):
+        elif not activator_in_venv(
+            new_activator,
+            active_env_dir,
+        ) and os.path.isfile(new_activator):
             stdout.write(f"deactivate && . {new_activator}")
     elif new_activator and os.path.isfile(new_activator):
         stdout.write(f". {new_activator}")
@@ -115,8 +118,7 @@ def parse_args(argv: list[str], stdout: TextIO) -> Args:
 
     fish = parse_flag(argv, "--fish")
     pwsh = parse_flag(argv, "--pwsh")
-    num_activators = sum([fish, pwsh])
-    if num_activators > 1:
+    if (num_activators := sum([fish, pwsh])) > 1:
         raise ValueError(
             f"zero or one activator flag expected, found {num_activators}",
         )
@@ -213,6 +215,7 @@ def poetry_env_list(directory: str) -> list[str]:
         return []
 
 
+@lru_cache
 def poetry_cache_dir() -> str | None:
     """Return the poetry cache directory, or None if it's not found."""
     cache_dir = os.environ.get("POETRY_CACHE_DIR", None)
@@ -337,7 +340,18 @@ def activator(env_directory: str, args: Args) -> str:
     if args.fish:
         script = "activate.fish"
     elif args.pwsh:
-        script = "Activate.ps1"
+        poetry_dir = poetry_cache_dir()
+        if (
+            poetry_dir is not None
+            and env_directory.startswith(poetry_dir)
+            and operating_system() != Os.WINDOWS
+        ):
+            # In poetry environments on *NIX systems, this activator has a lowercase A.
+            script = "activate.ps1"
+        else:
+            # In venv environments, and Windows poetry environments, this activator has
+            # an uppercase A.
+            script = "Activate.ps1"
     else:
         script = "activate"
     return os.path.join(env_directory, dir_name, f"{script}")
