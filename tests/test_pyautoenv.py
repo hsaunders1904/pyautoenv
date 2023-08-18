@@ -22,7 +22,7 @@ from unittest import mock
 import pytest
 
 import pyautoenv
-
+from tests.tools import root_dir
 
 def test_main_does_nothing_given_directory_does_not_exist():
     stdout = StringIO()
@@ -130,10 +130,10 @@ class TestParseArgs:
             pyautoenv.parse_args(["/some/dir", "/another/dir"], self.stdout)
 
     def test_empty_args_are_ignored(self):
-        argv = ["   ", "\t", "/some/dir", ""]
+        argv = ["   ", "\t", str(root_dir() / "some" / "dir"), ""]
 
         args = pyautoenv.parse_args(argv, self.stdout)
 
-        assert args.directory == "/some/dir"
+        assert args.directory == str(root_dir() / "some" / "dir")
         assert args.fish is False
         assert args.pwsh is False
