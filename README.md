@@ -93,8 +93,8 @@ To enable the application in PowerShell, dot the `.ps1` file.
 
 Add this to your profile to activate the application permanently.
 
-Note that this script re-aliases `cd`
-and only PowerShell running on Windows is supported.
+Note that this application hooks into and re-aliases `cd`.
+Therefore `pyautoenv` does not support the use of `Set-Location`.
 
 </details>
 
