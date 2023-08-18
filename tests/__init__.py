@@ -1,4 +1,3 @@
-#!/usr/bin/env fish
 # pyautoenv Automatically activate and deactivate Python environments.
 # Copyright (C) 2023  Harry Saunders.
 #
@@ -14,27 +13,4 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
-if ! status --is-interactive
-    exit 0
-end
-
-set _pyautoenv_path (dirname (realpath (status current-filename)))
-
-function _pyautoenv_activate --on-variable PWD \
-        --description 'Activate/deactivate python environments based on the current directory'
-    if test -n "$PYAUTOENV_DISABLE"; and test "$PYAUTOENV_DISABLE" != "0"
-        return
-    end
-    if ! command --search python3 >/dev/null
-        return
-    end
-    set _pyautoenv_py "$_pyautoenv_path/pyautoenv.py"
-    if test -f "$_pyautoenv_py"
-        eval (python3 "$_pyautoenv_py" --fish)
-    end
-end
-
-function _pyautoenv_version --description 'Print pyautoenv version'
-    python3 "$_pyautoenv_path/pyautoenv.py" --version
-end
+"""Tests for pyautoenv."""

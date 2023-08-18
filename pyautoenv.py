@@ -17,14 +17,17 @@
 """
 Print a command to activate or deactivate a Python venv based on a directory.
 
-Supports environments managed by venv and poetry. A venv project directory
-must contain a directory called '.venv', a poetry project directory must
-contain a 'poetry.lock' file.
+Supports environments managed by venv or poetry. A poetry project
+directory must contain a 'poetry.lock' file. A venv project must contain
+a directory called '.venv' or one of the names in the
+'PYAUTOENV_VENV_NAME' environment variable (names separated by a ';').
 """
+from __future__ import annotations
+
 import os
 import sys
 from functools import lru_cache
-from typing import List, TextIO, Union
+from typing import TextIO
 
 __version__ = "0.4.0"
 
@@ -35,18 +38,26 @@ positional arguments:
 
 options:
   --fish         use fish activation script
+  --pwsh         use powershell activation script
   -h, --help     show this help message and exit
   -V, --version  show program's version number and exit
 """
 VENV_NAMES = "PYAUTOENV_VENV_NAME"
 
 
-class CliArgs:
+class Args:
     """Container for command line arguments."""
 
-    def __init__(self, directory: str, *, fish: bool) -> None:
+    def __init__(
+        self,
+        directory: str,
+        *,
+        fish: bool = False,
+        pwsh: bool = False,
+    ) -> None:
         self.directory = directory
         self.fish = fish
+        self.pwsh = pwsh
 
 
 class Os:
@@ -57,42 +68,46 @@ class Os:
     WINDOWS = 2
 
 
-def main(sys_args: List[str], stdout: TextIO) -> int:
+def main(sys_args: list[str], stdout: TextIO) -> int:
     """Write commands to activate/deactivate environments."""
     args = parse_args(sys_args, stdout)
     if not os.path.isdir(args.directory):
         return 1
-    new_env_path = discover_env(args.directory)
-    if active_env_path := os.environ.get("VIRTUAL_ENV", None):
-        if not new_env_path:
+    new_activator = discover_env(args)
+    if active_env_dir := os.environ.get("VIRTUAL_ENV", None):
+        if not new_activator:
             stdout.write("deactivate")
-        elif not os.path.samefile(new_env_path, active_env_path):
-            stdout.write("deactivate")
-            if activate := env_activation_path(new_env_path, fish=args.fish):
-                stdout.write(f" && . {activate}")
-    elif new_env_path and (
-        activate := env_activation_path(new_env_path, fish=args.fish)
-    ):
-        stdout.write(f". {activate}")
+        elif not activator_in_venv(
+            new_activator,
+            active_env_dir,
+        ) and os.path.isfile(new_activator):
+            stdout.write(f"deactivate && . {new_activator}")
+    elif new_activator and os.path.isfile(new_activator):
+        stdout.write(f". {new_activator}")
     return 0
 
 
-def parse_args(argv: List[str], stdout: TextIO) -> CliArgs:
+def activator_in_venv(activator_path: str, venv_dir: str) -> bool:
+    """Return True if the given activator is in the given venv directory."""
+    activator_venv_dir = os.path.dirname(os.path.dirname(activator_path))
+    return os.path.samefile(activator_venv_dir, venv_dir)
+
+
+def parse_args(argv: list[str], stdout: TextIO) -> Args:
     """Parse the sequence of command line arguments."""
     # Avoiding argparse gives a good speed boost and the parsing logic
     # is not too complex. We won't get a full 'bells and whistles' CLI
     # experience, but that's fine for our use-case.
 
-    def parse_exit_flag(argv: List[str], flags: List[str]) -> bool:
+    def parse_exit_flag(argv: list[str], flags: list[str]) -> bool:
         return any(f in argv for f in flags)
 
-    def parse_flag(argv: List[str], flag: str) -> bool:
+    def parse_flag(argv: list[str], flag: str) -> bool:
         try:
             argv.pop(argv.index(flag))
         except ValueError:
             return False
-        else:
-            return True
+        return True
 
     if parse_exit_flag(argv, ["-h", "--help"]):
         stdout.write(CLI_HELP)
@@ -102,52 +117,59 @@ def parse_args(argv: List[str], stdout: TextIO) -> CliArgs:
         sys.exit(0)
 
     fish = parse_flag(argv, "--fish")
-    if len(argv) == 0:
-        return CliArgs(directory=os.getcwd(), fish=fish)
+    pwsh = parse_flag(argv, "--pwsh")
+    if (num_activators := sum([fish, pwsh])) > 1:
+        raise ValueError(
+            f"zero or one activator flag expected, found {num_activators}",
+        )
+    # ignore empty arguments
+    argv = [a for a in argv if a.strip()]
     if len(argv) > 1:
-        raise ValueError(  # noqa: TRY003
+        raise ValueError(
             f"exactly one positional argument expected, found {len(argv)}",
         )
-    return CliArgs(directory=os.path.abspath(argv[0]), fish=fish)
+    directory = os.path.abspath(argv[0]) if len(argv) else os.getcwd()
+    return Args(directory=directory, fish=fish, pwsh=pwsh)
 
 
-def discover_env(directory: str) -> Union[str, None]:
+def discover_env(args: Args) -> str | None:
     """Find an environment in the given directory or any of its parents."""
-    while directory != os.path.dirname(directory):
-        if env_dir := get_virtual_env(directory):
+    while args.directory != os.path.dirname(args.directory):
+        if env_dir := get_virtual_env(args):
             return env_dir
-        directory = os.path.dirname(directory)
+        args.directory = os.path.dirname(args.directory)
     return None
 
 
-def get_virtual_env(directory: str) -> Union[str, None]:
-    """Return the environment if defined in the given directory."""
-    if venv_dir := has_venv(directory):
+def get_virtual_env(args: Args) -> str | None:
+    """Return the activator for the venv if defined in the given directory."""
+    if venv_dir := venv_activator(args):
         return venv_dir
-    if has_poetry_env(directory) and (env_path := poetry_env_path(directory)):
+    if has_poetry_env(args.directory) and (env_path := poetry_activator(args)):
         return env_path
     return None
 
 
-def has_venv(directory: str) -> Union[str, None]:
-    """Return the venv within the given directory if it contains one."""
-    candidate_paths = venv_path(directory)
+def venv_activator(args: Args) -> str | None:
+    """Return the venv activator within the given directory if it contains one."""
+    candidate_paths = venv_path(args)
     for path in candidate_paths:
-        if os.path.isfile(activator(path)):
-            return path
+        activate_script = activator(path, args)
+        if os.path.isfile(activate_script):
+            return activate_script
     return None
 
 
-def venv_path(directory: str) -> List[str]:
-    """Get the paths to the activate scripts for a list of candidate venvs."""
+def venv_path(args: Args) -> list[str]:
+    """Get the paths to a list of candidate venvs within the given directory."""
     venv_paths = []
     for venv_name in venv_dir_names():
-        activator_path = os.path.join(directory, venv_name)
+        activator_path = os.path.join(args.directory, venv_name)
         venv_paths.append(activator_path)
     return venv_paths
 
 
-def venv_dir_names() -> List[str]:
+def venv_dir_names() -> list[str]:
     """Get the possible names for a venv directory."""
     if name_list := os.environ.get(VENV_NAMES, ""):
         return [x for x in name_list.split(";") if x]
@@ -159,19 +181,20 @@ def has_poetry_env(directory: str) -> bool:
     return os.path.isfile(os.path.join(directory, "poetry.lock"))
 
 
-def poetry_env_path(directory: str) -> Union[str, None]:
+def poetry_activator(args: Args) -> str | None:
     """
-    Return the path of the venv associated with a poetry project directory.
+    Return the activator for the venv associated with a poetry project directory.
 
     If there are multiple poetry environments, pick the one with the
     latest modification time.
     """
-    if env_list := poetry_env_list(directory):
-        return max(env_list, key=lambda p: os.stat(p).st_mtime)
+    if env_list := poetry_env_list(args.directory):
+        env_dir = max(env_list, key=lambda p: os.stat(p).st_mtime)
+        return activator(env_dir, args)
     return None
 
 
-def poetry_env_list(directory: str) -> List[str]:
+def poetry_env_list(directory: str) -> list[str]:
     """
     Return list of poetry environments for the given directory.
 
@@ -192,7 +215,8 @@ def poetry_env_list(directory: str) -> List[str]:
         return []
 
 
-def poetry_cache_dir() -> Union[str, None]:
+@lru_cache
+def poetry_cache_dir() -> str | None:
     """Return the poetry cache directory, or None if it's not found."""
     cache_dir = os.environ.get("POETRY_CACHE_DIR", None)
     if cache_dir and os.path.isdir(cache_dir):
@@ -207,7 +231,7 @@ def poetry_cache_dir() -> Union[str, None]:
     return None
 
 
-def linux_poetry_cache_dir() -> Union[str, None]:
+def linux_poetry_cache_dir() -> str | None:
     """Return the poetry cache directory for Linux."""
     xdg_cache = os.environ.get(
         "XDG_CACHE_HOME",
@@ -226,14 +250,14 @@ def macos_poetry_cache_dir() -> str:
     )
 
 
-def windows_poetry_cache_dir() -> Union[str, None]:
+def windows_poetry_cache_dir() -> str | None:
     """Return the poetry cache directory for Windows."""
     if not (app_data := os.environ.get("LOCALAPPDATA", None)):
         return None
     return os.path.join(app_data, "pypoetry", "Cache")
 
 
-def poetry_env_name(directory: str) -> Union[str, None]:
+def poetry_env_name(directory: str) -> str | None:
     """
     Get the name of the poetry environment defined in the given directory.
 
@@ -282,7 +306,7 @@ def poetry_env_name(directory: str) -> Union[str, None]:
     return f"{sanitized_name}-{b64_hash}"
 
 
-def poetry_project_name(directory: str) -> Union[str, None]:
+def poetry_project_name(directory: str) -> str | None:
     """Parse the poetry project name from the given directory."""
     try:
         with open(os.path.join(directory, "pyproject.toml")) as f:
@@ -310,30 +334,31 @@ def poetry_project_name(directory: str) -> Union[str, None]:
     return None
 
 
-def env_activation_path(env_dir: str, *, fish: bool) -> Union[str, None]:
-    """Get the path to the activation script for the environment, if it exists."""
-    activate_script = activator(env_dir, fish=fish)
-    if os.path.isfile(activate_script):
-        return activate_script
-    return None
-
-
-def activator(env_directory: str, *, fish: bool = False) -> str:
+def activator(env_directory: str, args: Args) -> str:
     """Get the activator script for the environment in the given directory."""
-    activate = "activate"
-    dir_name = "bin"
-    extension = ""
-    if fish:
-        extension = ".fish"
-    elif operating_system() == Os.WINDOWS:
-        activate = activate.title()
-        dir_name = "Scripts"
-        extension = ".ps1"
-    return os.path.join(env_directory, dir_name, f"{activate}{extension}")
+    dir_name = "Scripts" if operating_system() == Os.WINDOWS else "bin"
+    if args.fish:
+        script = "activate.fish"
+    elif args.pwsh:
+        poetry_dir = poetry_cache_dir()
+        if (
+            poetry_dir is not None
+            and env_directory.startswith(poetry_dir)
+            and operating_system() != Os.WINDOWS
+        ):
+            # In poetry environments on *NIX systems, this activator has a lowercase A.
+            script = "activate.ps1"
+        else:
+            # In venv environments, and Windows poetry environments, this activator has
+            # an uppercase A.
+            script = "Activate.ps1"
+    else:
+        script = "activate"
+    return os.path.join(env_directory, dir_name, f"{script}")
 
 
 @lru_cache
-def operating_system() -> Union[int, None]:
+def operating_system() -> int | None:
     """
     Return the operating system the script's being run on.
 
