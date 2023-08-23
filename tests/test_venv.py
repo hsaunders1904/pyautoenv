@@ -48,7 +48,6 @@ class VenvTester(abc.ABC):
         """The name of the activator script."""
 
     def setup_method(self):
-        pyautoenv.operating_system.cache_clear()
         pyautoenv.poetry_cache_dir.cache_clear()
         os.environ = {}  # noqa: B003
         self.os_patch = mock.patch(OPERATING_SYSTEM, return_value=self.os)

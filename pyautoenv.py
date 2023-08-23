@@ -31,7 +31,7 @@ from typing import TextIO
 
 __version__ = "0.5.0"
 
-CLI_HELP = f"""usage: pyautoenv [-h] [-V] [--fish] [directory]
+CLI_HELP = f"""usage: pyautoenv [-h] [-V] [--fish | --pwsh] [directory]
 {__doc__}
 positional arguments:
   directory      the path to look in for a python environment (default: '.')
@@ -151,22 +151,22 @@ def get_virtual_env(args: Args) -> str | None:
 
 
 def venv_activator(args: Args) -> str | None:
-    """Return the venv activator within the given directory if it contains one."""
-    candidate_paths = venv_path(args)
-    for path in candidate_paths:
+    """Return the venv activator within the given directory, if it contains a venv."""
+    candidate_venv_dirs = venv_candidate_dirs(args)
+    for path in candidate_venv_dirs:
         activate_script = activator(path, args)
         if os.path.isfile(activate_script):
             return activate_script
     return None
 
 
-def venv_path(args: Args) -> list[str]:
+def venv_candidate_dirs(args: Args) -> list[str]:
     """Get the paths to a list of candidate venvs within the given directory."""
-    venv_paths = []
+    candidate_paths = []
     for venv_name in venv_dir_names():
-        activator_path = os.path.join(args.directory, venv_name)
-        venv_paths.append(activator_path)
-    return venv_paths
+        candidate_dir = os.path.join(args.directory, venv_name)
+        candidate_paths.append(candidate_dir)
+    return candidate_paths
 
 
 def venv_dir_names() -> list[str]:

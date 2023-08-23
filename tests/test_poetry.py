@@ -88,7 +88,6 @@ class PoetryTester(abc.ABC):
         return fs
 
     def setup_method(self):
-        pyautoenv.operating_system.cache_clear()
         pyautoenv.poetry_cache_dir.cache_clear()
         self.os_patch = mock.patch(OPERATING_SYSTEM, return_value=self.os)
         self.os_patch.start()
