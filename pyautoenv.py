@@ -29,7 +29,7 @@ import sys
 from functools import lru_cache
 from typing import TextIO
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 CLI_HELP = f"""usage: pyautoenv [-h] [-V] [--fish] [directory]
 {__doc__}
