@@ -330,22 +330,23 @@ def poetry_env_name(directory: str) -> str | None:
 
 def poetry_project_name(directory: str) -> str | None:
     """Parse the poetry project name from the given directory."""
+    pyproject_file_path = os.path.join(directory, "pyproject.toml")
     try:
-        with open(os.path.join(directory, "pyproject.toml")) as f:
-            pyproject = f.readlines()
+        with open(pyproject_file_path, encoding="utf-8") as pyproject_file:
+            pyproject_lines = pyproject_file.readlines()
     except OSError:
         return None
     # Ideally we'd use a proper TOML parser to do this, but there isn't
     # one available in the standard library until Python 3.11. This
     # hacked together parser should work for the vast majority of cases.
-    in_tool_poetry = False
-    for line in pyproject:
+    in_tool_poetry_section = False
+    for line in pyproject_lines:
         if line.strip() == "[tool.poetry]":
-            in_tool_poetry = True
+            in_tool_poetry_section = True
             continue
         if line.strip().startswith("["):
-            in_tool_poetry = False
-        if not in_tool_poetry:
+            in_tool_poetry_section = False
+        if not in_tool_poetry_section:
             continue
         try:
             key, val = (part.strip().strip('"') for part in line.split("="))
