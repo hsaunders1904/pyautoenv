@@ -33,7 +33,7 @@ import sys
 from functools import lru_cache
 from typing import TextIO
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 
 CLI_HELP = f"""usage: pyautoenv [-h] [-V] [--fish | --pwsh] [directory]
 {__doc__}
