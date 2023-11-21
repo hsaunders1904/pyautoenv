@@ -21,6 +21,10 @@ Supports environments managed by venv or poetry. A poetry project
 directory must contain a 'poetry.lock' file. A venv project must contain
 a directory called '.venv' or one of the names in the
 'PYAUTOENV_VENV_NAME' environment variable (names separated by a ';').
+
+To specify specific directories where pyautoenv should not activate
+environments, add the directory's path to the 'PYAUTOENV_IGNORE_DIR'
+environment variable. Paths should be separated using a ';'.
 """
 from __future__ import annotations
 
@@ -42,7 +46,10 @@ options:
   -h, --help     show this help message and exit
   -V, --version  show program's version number and exit
 """
+IGNORE_DIRS = "PYAUTOENV_IGNORE_DIR"
+"""Directories to ignore and not activate environments within."""
 VENV_NAMES = "PYAUTOENV_VENV_NAME"
+"""Directory names to search in for venv virtual environments."""
 
 
 class Args:
@@ -134,11 +141,26 @@ def parse_args(argv: list[str], stdout: TextIO) -> Args:
 
 def discover_env(args: Args) -> str | None:
     """Find an environment in the given directory or any of its parents."""
-    while args.directory != os.path.dirname(args.directory):
+    while (not dir_is_ignored(args.directory)) and (
+        args.directory != os.path.dirname(args.directory)
+    ):
         if env_dir := get_virtual_env(args):
             return env_dir
         args.directory = os.path.dirname(args.directory)
     return None
+
+
+def dir_is_ignored(directory: str) -> bool:
+    """Return True if the given directory is marked to be ignored."""
+    return any(directory == ignored for ignored in ignored_dirs())
+
+
+@lru_cache
+def ignored_dirs() -> list[str]:
+    """Get the list of directories to not activate an environment within."""
+    if dirs := os.environ.get(IGNORE_DIRS, None):
+        return dirs.split(";")
+    return []
 
 
 def get_virtual_env(args: Args) -> str | None:

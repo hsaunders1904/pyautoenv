@@ -49,6 +49,7 @@ class VenvTester(abc.ABC):
 
     def setup_method(self):
         pyautoenv.poetry_cache_dir.cache_clear()
+        pyautoenv.ignored_dirs.cache_clear()
         os.environ = {}  # noqa: B003
         self.os_patch = mock.patch(OPERATING_SYSTEM, return_value=self.os)
         self.os_patch.start()
@@ -163,6 +164,33 @@ class VenvTester(abc.ABC):
 
         assert pyautoenv.main([str(self.PY_PROJ), self.flag], stdout) == 0
         assert stdout.getvalue() == f". {self.VENV_DIR / self.activator}"
+
+    def test_nothing_happens_given_changing_to_ignored_directory(self):
+        stdout = StringIO()
+        ignore = f"some_dir;{self.PY_PROJ.resolve()}"
+        os.environ[pyautoenv.IGNORE_DIRS] = ignore
+
+        assert pyautoenv.main([str(self.PY_PROJ), self.flag], stdout) == 0
+        assert not stdout.getvalue()
+
+    def test_nothing_happens_given_change_to_child_of_ignored_directory(self):
+        stdout = StringIO()
+        ignore = f"some_dir;{self.PY_PROJ.resolve()}"
+        os.environ[pyautoenv.IGNORE_DIRS] = ignore
+
+        assert (
+            pyautoenv.main([str(self.PY_PROJ / "src"), self.flag], stdout) == 0
+        )
+        assert not stdout.getvalue()
+
+    def test_deactivate_given_changing_to_ignored_directory(self):
+        stdout = StringIO()
+        activate_venv(self.VENV_DIR)
+        ignore = f"some_dir;{self.PY_PROJ.resolve()}"
+        os.environ[pyautoenv.IGNORE_DIRS] = ignore
+
+        assert pyautoenv.main([str(self.PY_PROJ), self.flag], stdout) == 0
+        assert stdout.getvalue() == "deactivate"
 
 
 class TestVenvBashLinux(VenvTester):
