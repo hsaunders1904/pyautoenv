@@ -89,6 +89,7 @@ class PoetryTester(abc.ABC):
 
     def setup_method(self):
         pyautoenv.poetry_cache_dir.cache_clear()
+        pyautoenv.ignored_dirs.cache_clear()
         self.os_patch = mock.patch(OPERATING_SYSTEM, return_value=self.os)
         self.os_patch.start()
         os.environ = copy.deepcopy(self.env)  # noqa: B003
@@ -251,6 +252,34 @@ class PoetryTester(abc.ABC):
 
         assert pyautoenv.main(["src", self.flag], stdout) == 0
         assert not stdout.getvalue()
+
+    def test_nothing_happens_given_changing_to_ignored_directory(self):
+        stdout = StringIO()
+        ignore = f"some_dir;{self.python_proj.resolve()}"
+        os.environ[pyautoenv.IGNORE_DIRS] = ignore
+
+        assert pyautoenv.main([str(self.python_proj), self.flag], stdout) == 0
+        assert not stdout.getvalue()
+
+    def test_nothing_happens_given_change_to_child_of_ignored_directory(self):
+        stdout = StringIO()
+        ignore = f"some_dir;{self.python_proj.resolve()}"
+        os.environ[pyautoenv.IGNORE_DIRS] = ignore
+
+        assert (
+            pyautoenv.main([str(self.python_proj / "src"), self.flag], stdout)
+            == 0
+        )
+        assert not stdout.getvalue()
+
+    def test_deactivate_given_changing_to_ignored_directory(self):
+        stdout = StringIO()
+        activate_venv(self.venv_dir)
+        ignore = f"some_dir;{self.python_proj.resolve()}"
+        os.environ[pyautoenv.IGNORE_DIRS] = ignore
+
+        assert pyautoenv.main([str(self.python_proj), self.flag], stdout) == 0
+        assert stdout.getvalue() == "deactivate"
 
 
 class PoetryLinuxTester(PoetryTester):

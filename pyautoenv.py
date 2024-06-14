@@ -21,6 +21,10 @@ Supports environments managed by venv or poetry. A poetry project
 directory must contain a 'poetry.lock' file. A venv project must contain
 a directory called '.venv' or one of the names in the
 'PYAUTOENV_VENV_NAME' environment variable (names separated by a ';').
+
+To specify specific directories where pyautoenv should not activate
+environments, add the directory's path to the 'PYAUTOENV_IGNORE_DIR'
+environment variable. Paths should be separated using a ';'.
 """
 from __future__ import annotations
 
@@ -29,7 +33,7 @@ import sys
 from functools import lru_cache
 from typing import TextIO
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 
 CLI_HELP = f"""usage: pyautoenv [-h] [-V] [--fish | --pwsh] [directory]
 {__doc__}
@@ -42,7 +46,10 @@ options:
   -h, --help     show this help message and exit
   -V, --version  show program's version number and exit
 """
+IGNORE_DIRS = "PYAUTOENV_IGNORE_DIR"
+"""Directories to ignore and not activate environments within."""
 VENV_NAMES = "PYAUTOENV_VENV_NAME"
+"""Directory names to search in for venv virtual environments."""
 
 
 class Args:
@@ -134,11 +141,26 @@ def parse_args(argv: list[str], stdout: TextIO) -> Args:
 
 def discover_env(args: Args) -> str | None:
     """Find an environment in the given directory or any of its parents."""
-    while args.directory != os.path.dirname(args.directory):
+    while (not dir_is_ignored(args.directory)) and (
+        args.directory != os.path.dirname(args.directory)
+    ):
         if env_dir := get_virtual_env(args):
             return env_dir
         args.directory = os.path.dirname(args.directory)
     return None
+
+
+def dir_is_ignored(directory: str) -> bool:
+    """Return True if the given directory is marked to be ignored."""
+    return any(directory == ignored for ignored in ignored_dirs())
+
+
+@lru_cache
+def ignored_dirs() -> list[str]:
+    """Get the list of directories to not activate an environment within."""
+    if dirs := os.environ.get(IGNORE_DIRS, None):
+        return dirs.split(";")
+    return []
 
 
 def get_virtual_env(args: Args) -> str | None:
@@ -308,22 +330,23 @@ def poetry_env_name(directory: str) -> str | None:
 
 def poetry_project_name(directory: str) -> str | None:
     """Parse the poetry project name from the given directory."""
+    pyproject_file_path = os.path.join(directory, "pyproject.toml")
     try:
-        with open(os.path.join(directory, "pyproject.toml")) as f:
-            pyproject = f.readlines()
+        with open(pyproject_file_path, encoding="utf-8") as pyproject_file:
+            pyproject_lines = pyproject_file.readlines()
     except OSError:
         return None
     # Ideally we'd use a proper TOML parser to do this, but there isn't
     # one available in the standard library until Python 3.11. This
     # hacked together parser should work for the vast majority of cases.
-    in_tool_poetry = False
-    for line in pyproject:
+    in_tool_poetry_section = False
+    for line in pyproject_lines:
         if line.strip() == "[tool.poetry]":
-            in_tool_poetry = True
+            in_tool_poetry_section = True
             continue
         if line.strip().startswith("["):
-            in_tool_poetry = False
-        if not in_tool_poetry:
+            in_tool_poetry_section = False
+        if not in_tool_poetry_section:
             continue
         try:
             key, val = (part.strip().strip('"') for part in line.split("="))
