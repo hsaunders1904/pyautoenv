@@ -90,7 +90,7 @@ def main(sys_args: list[str], stdout: TextIO) -> int:
         ) and os.path.isfile(new_activator):
             stdout.write(f"deactivate && . {new_activator}")
     elif new_activator and os.path.isfile(new_activator):
-        stdout.write(f". {new_activator}")
+        stdout.write(f". '{new_activator}'")
     return 0
 
 

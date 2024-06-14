@@ -101,13 +101,13 @@ class PoetryTester(abc.ABC):
         stdout = StringIO()
 
         assert pyautoenv.main([str(self.python_proj), self.flag], stdout) == 0
-        assert stdout.getvalue() == f". {self.venv_dir / self.activator}"
+        assert stdout.getvalue() == f". '{self.venv_dir / self.activator}'"
 
     def test_activates_given_poetry_dir_in_parent(self):
         stdout = StringIO()
 
         assert pyautoenv.main(["python_project/src", self.flag], stdout) == 0
-        assert stdout.getvalue() == f". {self.venv_dir / self.activator}"
+        assert stdout.getvalue() == f". '{self.venv_dir / self.activator}'"
 
     def test_nothing_happens_given_not_venv_dir_and_not_active(self):
         stdout = StringIO()
@@ -189,14 +189,14 @@ class PoetryTester(abc.ABC):
         os.environ["POETRY_CACHE_DIR"] = str(new_poetry_cache_dir)
 
         assert pyautoenv.main(["pyproj2", self.flag], stdout) == 0
-        assert stdout.getvalue() == f". {new_activator}"
+        assert stdout.getvalue() == f". '{new_activator}'"
 
     def test_poetry_cache_dir_env_var_not_used_if_set_and_does_not_exist(self):
         stdout = StringIO()
         os.environ["POETRY_CACHE_DIR"] = "/not/a/dir"
 
         assert pyautoenv.main([str(self.python_proj), self.flag], stdout) == 0
-        assert stdout.getvalue() == f". {self.venv_dir / self.activator}"
+        assert stdout.getvalue() == f". '{self.venv_dir / self.activator}'"
 
     def test_does_nothing_given_poetry_cache_dir_does_not_exist(self, fs):
         stdout = StringIO()
