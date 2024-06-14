@@ -73,7 +73,7 @@ class VenvTester(abc.ABC):
         stdout = StringIO()
 
         assert pyautoenv.main([str(self.PY_PROJ), self.flag], stdout) == 0
-        assert stdout.getvalue() == f". {self.VENV_DIR / self.activator}"
+        assert stdout.getvalue() == f". '{self.VENV_DIR / self.activator}'"
 
     def test_activates_if_venv_in_parent(self):
         stdout = StringIO()
@@ -81,7 +81,7 @@ class VenvTester(abc.ABC):
         assert (
             pyautoenv.main([str(self.PY_PROJ / "src"), self.flag], stdout) == 0
         )
-        assert stdout.getvalue() == f". {self.VENV_DIR / self.activator}"
+        assert stdout.getvalue() == f". '{self.VENV_DIR / self.activator}'"
 
     def test_nothing_happens_given_venv_dir_is_already_active(self):
         stdout = StringIO()
@@ -156,14 +156,14 @@ class VenvTester(abc.ABC):
         os.environ["PYAUTOENV_VENV_NAME"] = "foo;venv;other_venv"
 
         assert pyautoenv.main([str(self.PY_PROJ), self.flag], stdout) == 0
-        assert stdout.getvalue() == f". {venv_activate}"
+        assert stdout.getvalue() == f". '{venv_activate}'"
 
     def test_venv_dir_name_environment_variable_ignored_if_set_but_empty(self):
         stdout = StringIO()
         os.environ["PYAUTOENV_VENV_NAME"] = ""
 
         assert pyautoenv.main([str(self.PY_PROJ), self.flag], stdout) == 0
-        assert stdout.getvalue() == f". {self.VENV_DIR / self.activator}"
+        assert stdout.getvalue() == f". '{self.VENV_DIR / self.activator}'"
 
     def test_nothing_happens_given_changing_to_ignored_directory(self):
         stdout = StringIO()
