@@ -26,14 +26,13 @@ To specify specific directories where pyautoenv should not activate
 environments, add the directory's path to the 'PYAUTOENV_IGNORE_DIR'
 environment variable. Paths should be separated using a ';'.
 """
-from __future__ import annotations
 
 import os
 import sys
 from functools import lru_cache
-from typing import TextIO
+from typing import List, TextIO, Union
 
-__version__ = "0.6.0"
+__version__ = "0.6.1"
 
 CLI_HELP = f"""usage: pyautoenv [-h] [-V] [--fish | --pwsh] [directory]
 {__doc__}
@@ -75,13 +74,14 @@ class Os:
     WINDOWS = 2
 
 
-def main(sys_args: list[str], stdout: TextIO) -> int:
+def main(sys_args: List[str], stdout: TextIO) -> int:
     """Write commands to activate/deactivate environments."""
     args = parse_args(sys_args, stdout)
     if not os.path.isdir(args.directory):
         return 1
     new_activator = discover_env(args)
-    if active_env_dir := os.environ.get("VIRTUAL_ENV", None):
+    active_env_dir = os.environ.get("VIRTUAL_ENV", None)
+    if active_env_dir:
         if not new_activator:
             stdout.write("deactivate")
         elif not activator_in_venv(
@@ -100,16 +100,16 @@ def activator_in_venv(activator_path: str, venv_dir: str) -> bool:
     return os.path.samefile(activator_venv_dir, venv_dir)
 
 
-def parse_args(argv: list[str], stdout: TextIO) -> Args:
+def parse_args(argv: List[str], stdout: TextIO) -> Args:
     """Parse the sequence of command line arguments."""
     # Avoiding argparse gives a good speed boost and the parsing logic
     # is not too complex. We won't get a full 'bells and whistles' CLI
     # experience, but that's fine for our use-case.
 
-    def parse_exit_flag(argv: list[str], flags: list[str]) -> bool:
+    def parse_exit_flag(argv: List[str], flags: List[str]) -> bool:
         return any(f in argv for f in flags)
 
-    def parse_flag(argv: list[str], flag: str) -> bool:
+    def parse_flag(argv: List[str], flag: str) -> bool:
         try:
             argv.pop(argv.index(flag))
         except ValueError:
@@ -125,7 +125,8 @@ def parse_args(argv: list[str], stdout: TextIO) -> Args:
 
     fish = parse_flag(argv, "--fish")
     pwsh = parse_flag(argv, "--pwsh")
-    if (num_activators := sum([fish, pwsh])) > 1:
+    num_activators = sum([fish, pwsh])
+    if num_activators > 1:
         raise ValueError(
             f"zero or one activator flag expected, found {num_activators}",
         )
@@ -139,12 +140,13 @@ def parse_args(argv: list[str], stdout: TextIO) -> Args:
     return Args(directory=directory, fish=fish, pwsh=pwsh)
 
 
-def discover_env(args: Args) -> str | None:
+def discover_env(args: Args) -> Union[str, None]:
     """Find an environment in the given directory or any of its parents."""
     while (not dir_is_ignored(args.directory)) and (
         args.directory != os.path.dirname(args.directory)
     ):
-        if env_dir := get_virtual_env(args):
+        env_dir = get_virtual_env(args)
+        if env_dir:
             return env_dir
         args.directory = os.path.dirname(args.directory)
     return None
@@ -155,24 +157,26 @@ def dir_is_ignored(directory: str) -> bool:
     return any(directory == ignored for ignored in ignored_dirs())
 
 
-@lru_cache
-def ignored_dirs() -> list[str]:
+@lru_cache(maxsize=128)
+def ignored_dirs() -> List[str]:
     """Get the list of directories to not activate an environment within."""
-    if dirs := os.environ.get(IGNORE_DIRS, None):
+    dirs = os.environ.get(IGNORE_DIRS, None)
+    if dirs:
         return dirs.split(";")
     return []
 
 
-def get_virtual_env(args: Args) -> str | None:
+def get_virtual_env(args: Args) -> Union[str, None]:
     """Return the activator for the venv if defined in the given directory."""
-    if venv_dir := venv_activator(args):
+    venv_dir = venv_activator(args)
+    if venv_dir:
         return venv_dir
-    if has_poetry_env(args.directory) and (env_path := poetry_activator(args)):
-        return env_path
+    if has_poetry_env(args.directory):
+        return poetry_activator(args)
     return None
 
 
-def venv_activator(args: Args) -> str | None:
+def venv_activator(args: Args) -> Union[str, None]:
     """Return the venv activator within the given directory, if it contains a venv."""
     candidate_venv_dirs = venv_candidate_dirs(args)
     for path in candidate_venv_dirs:
@@ -182,7 +186,7 @@ def venv_activator(args: Args) -> str | None:
     return None
 
 
-def venv_candidate_dirs(args: Args) -> list[str]:
+def venv_candidate_dirs(args: Args) -> List[str]:
     """Get the paths to a list of candidate venvs within the given directory."""
     candidate_paths = []
     for venv_name in venv_dir_names():
@@ -191,9 +195,10 @@ def venv_candidate_dirs(args: Args) -> list[str]:
     return candidate_paths
 
 
-def venv_dir_names() -> list[str]:
+def venv_dir_names() -> List[str]:
     """Get the possible names for a venv directory."""
-    if name_list := os.environ.get(VENV_NAMES, ""):
+    name_list = os.environ.get(VENV_NAMES, "")
+    if name_list:
         return [x for x in name_list.split(";") if x]
     return [".venv"]
 
@@ -203,29 +208,32 @@ def has_poetry_env(directory: str) -> bool:
     return os.path.isfile(os.path.join(directory, "poetry.lock"))
 
 
-def poetry_activator(args: Args) -> str | None:
+def poetry_activator(args: Args) -> Union[str, None]:
     """
     Return the activator for the venv associated with a poetry project directory.
 
     If there are multiple poetry environments, pick the one with the
     latest modification time.
     """
-    if env_list := poetry_env_list(args.directory):
+    env_list = poetry_env_list(args.directory)
+    if env_list:
         env_dir = max(env_list, key=lambda p: os.stat(p).st_mtime)
         return activator(env_dir, args)
     return None
 
 
-def poetry_env_list(directory: str) -> list[str]:
+def poetry_env_list(directory: str) -> List[str]:
     """
     Return list of poetry environments for the given directory.
 
     This can be found via the poetry CLI using
     ``poetry env list --full-path``, but it's painfully slow.
     """
-    if (cache_dir := poetry_cache_dir()) is None:
+    cache_dir = poetry_cache_dir()
+    if cache_dir is None:
         return []
-    if (env_name := poetry_env_name(directory)) is None:
+    env_name = poetry_env_name(directory)
+    if env_name is None:
         return []
     try:
         return [
@@ -237,8 +245,8 @@ def poetry_env_list(directory: str) -> list[str]:
         return []
 
 
-@lru_cache
-def poetry_cache_dir() -> str | None:
+@lru_cache(maxsize=128)
+def poetry_cache_dir() -> Union[str, None]:
     """Return the poetry cache directory, or None if it's not found."""
     cache_dir = os.environ.get("POETRY_CACHE_DIR", None)
     if cache_dir and os.path.isdir(cache_dir):
@@ -253,7 +261,7 @@ def poetry_cache_dir() -> str | None:
     return None
 
 
-def linux_poetry_cache_dir() -> str | None:
+def linux_poetry_cache_dir() -> Union[str, None]:
     """Return the poetry cache directory for Linux."""
     xdg_cache = os.environ.get(
         "XDG_CACHE_HOME",
@@ -272,14 +280,15 @@ def macos_poetry_cache_dir() -> str:
     )
 
 
-def windows_poetry_cache_dir() -> str | None:
+def windows_poetry_cache_dir() -> Union[str, None]:
     """Return the poetry cache directory for Windows."""
-    if not (app_data := os.environ.get("LOCALAPPDATA", None)):
+    app_data = os.environ.get("LOCALAPPDATA", None)
+    if not app_data:
         return None
     return os.path.join(app_data, "pypoetry", "Cache")
 
 
-def poetry_env_name(directory: str) -> str | None:
+def poetry_env_name(directory: str) -> Union[str, None]:
     """
     Get the name of the poetry environment defined in the given directory.
 
@@ -298,7 +307,8 @@ def poetry_env_name(directory: str) -> str | None:
     Logic comes from the poetry source code:
     https://github.com/python-poetry/poetry/blob/2b15ce10f02b0c6347fe2f12ae902488edeaaf7c/src/poetry/utils/env.py#L1207.
     """
-    if (name := poetry_project_name(directory)) is None:
+    name = poetry_project_name(directory)
+    if name is None:
         return None
 
     # These two take roughly the same amount of time to import as it
@@ -328,7 +338,7 @@ def poetry_env_name(directory: str) -> str | None:
     return f"{sanitized_name}-{b64_hash}"
 
 
-def poetry_project_name(directory: str) -> str | None:
+def poetry_project_name(directory: str) -> Union[str, None]:
     """Parse the poetry project name from the given directory."""
     pyproject_file_path = os.path.join(directory, "pyproject.toml")
     try:
@@ -380,8 +390,8 @@ def activator(env_directory: str, args: Args) -> str:
     return os.path.join(env_directory, dir_name, f"{script}")
 
 
-@lru_cache
-def operating_system() -> int | None:
+@lru_cache(maxsize=128)
+def operating_system() -> Union[int, None]:
     """
     Return the operating system the script's being run on.
 
