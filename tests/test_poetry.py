@@ -143,10 +143,20 @@ class PoetryTester(abc.ABC):
         )
         assert stdout.getvalue() == "deactivate"
 
-    def test_deactivate_and_activate_switching_to_new_poetry_env(self, fs):
+    @pytest.mark.parametrize("name_in_project_section", [True, False])
+    def test_deactivate_and_activate_switching_to_new_poetry_env(
+        self,
+        fs,
+        name_in_project_section,
+    ):
         stdout = StringIO()
         activate_venv(self.venv_dir)
-        fs = make_poetry_project(fs, "pyproj2", Path("pyproj2"))
+        fs = make_poetry_project(
+            fs,
+            "pyproj2",
+            Path("pyproj2"),
+            name_in_project_section=name_in_project_section,
+        )
         if os.name == "nt":
             new_venv = self.poetry_cache / "pyproj2-lbvqfyck-py3.8"
         else:
