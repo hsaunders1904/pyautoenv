@@ -33,6 +33,8 @@ def make_poetry_project(
     fs: FakeFilesystem,
     name: str,
     path: Path,
+    *,
+    name_in_project_section: bool = False,
 ) -> FakeFilesystem:
     """Create a poetry project on the given file system."""
     fs.create_file(path / "poetry.lock")
@@ -41,8 +43,8 @@ def make_poetry_project(
         'requires = ["poetry-core>=1.0.0"]\n'
         'build-backend = "poetry.core.masonry.api"\n'
         "\n"
-        "[tool.poetry]\n"
-        "# comment\n"
+        + ("[project]\n" if name_in_project_section else "[tool.poetry]\n")
+        + "# comment\n"
         'names = "not this one!"\n'
         f'name = "{name}"\n'
         'version = "0.2.0"\n'

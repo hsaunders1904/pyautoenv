@@ -32,7 +32,7 @@ import sys
 from functools import lru_cache
 from typing import List, TextIO, Union
 
-__version__ = "0.6.1"
+__version__ = "0.6.2"
 
 CLI_HELP = f"""usage: pyautoenv [-h] [-V] [--fish | --pwsh] [directory]
 {__doc__}
@@ -351,7 +351,7 @@ def poetry_project_name(directory: str) -> Union[str, None]:
     # hacked together parser should work for the vast majority of cases.
     in_tool_poetry_section = False
     for line in pyproject_lines:
-        if line.strip() == "[tool.poetry]":
+        if line.strip() in ["[tool.poetry]", "[project]"]:
             in_tool_poetry_section = True
             continue
         if line.strip().startswith("["):
