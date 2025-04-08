@@ -58,3 +58,5 @@ function Invoke-PyAutoEnvVersion() {
 function cd() {
   Set-Location @Args && Invoke-PyAutoEnv
 }
+
+Invoke-PyAutoEnv

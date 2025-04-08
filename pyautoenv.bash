@@ -22,25 +22,27 @@ if ! [ "$(type cd)" == "cd is a shell builtin" ]; then
     return
 fi
 
-_bash_pyautoenv_path="$(cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd)"
+_pyautoenv_path="$(cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd)"
 
-function _bash_pyautoenv_activate() {
+function _pyautoenv_activate() {
     if [ "${PYAUTOENV_DISABLE-0}" -ne 0 ]; then
         return
     fi
     if [ -z "$(command -v python3)" ]; then
         return
     fi
-    local pyautoenv_py="${_bash_pyautoenv_path}/pyautoenv.py"
+    local pyautoenv_py="${_pyautoenv_path}/pyautoenv.py"
     if [ -f "${pyautoenv_py}" ]; then
         eval "$(python3 "${pyautoenv_py}")"
     fi
 }
 
-function _bash_pyautoenv_version() {
-    python3 "${_bash_pyautoenv_path}/pyautoenv.py" --version
+function _pyautoenv_version() {
+    python3 "${_pyautoenv_path}/pyautoenv.py" --version
 }
 
 function cd() {
-    builtin cd "$@" && _bash_pyautoenv_activate
+    builtin cd "$@" && _pyautoenv_activate
 }
+
+_pyautoenv_activate
