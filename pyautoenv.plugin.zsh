@@ -17,7 +17,6 @@
 _pyautoenv_path="${0:a:h}"
 
 function _pyautoenv_activate() {
-    add-zsh-hook chpwd _pyautoenv_activate
     add-zsh-hook -d precmd _pyautoenv_activate
     if [ "${PYAUTOENV_DISABLE-0}" -ne 0 ]; then
         return
@@ -27,7 +26,11 @@ function _pyautoenv_activate() {
     fi
     local pyautoenv_py="${_pyautoenv_path}/pyautoenv.py"
     if [ -f "${pyautoenv_py}" ]; then
-        eval "$(python3 "${pyautoenv_py}")"
+        if [ "${PYAUTOENV_DEBUG-0}" -eq 0 ]; then
+            eval "$(python3 -OO "${pyautoenv_py}")"
+        else
+            eval "$(python3 "${pyautoenv_py}")"
+        fi
     fi
 }
 
@@ -46,3 +49,4 @@ function _pyautoenv_version() {
 # startup and then on any change of directory.
 autoload -Uz add-zsh-hook
 add-zsh-hook precmd _pyautoenv_activate
+add-zsh-hook chpwd _pyautoenv_activate
