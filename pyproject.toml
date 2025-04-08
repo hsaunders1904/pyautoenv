@@ -6,7 +6,7 @@ authors = [
   {name = "Harry Saunders", email = "33317174+hsaunders1904@users.noreply.github.com"}
 ]
 license = "GPL-3.0-or-later"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 
 [project.optional-dependencies]
 dev = [

@@ -89,7 +89,6 @@ class PoetryTester(abc.ABC):
 
     def setup_method(self):
         pyautoenv.poetry_cache_dir.cache_clear()
-        pyautoenv.ignored_dirs.cache_clear()
         self.os_patch = mock.patch(OPERATING_SYSTEM, return_value=self.os)
         self.os_patch.start()
         os.environ = copy.deepcopy(self.env)  # noqa: B003

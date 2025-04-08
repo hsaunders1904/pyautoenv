@@ -25,6 +25,10 @@ a directory called '.venv' or one of the names in the
 To specify specific directories where pyautoenv should not activate
 environments, add the directory's path to the 'PYAUTOENV_IGNORE_DIR'
 environment variable. Paths should be separated using a ';'.
+
+When running the script with __debug__, the logging level can be set
+using the 'PYAUTOENV_LOG_LEVEL' environment variable. The level can be
+set to any supported by Python's 'logging' module.
 """
 
 import os
@@ -32,7 +36,7 @@ import sys
 from functools import lru_cache
 from typing import List, TextIO, Union
 
-__version__ = "0.6.2"
+__version__ = "0.7.0"
 
 CLI_HELP = f"""usage: pyautoenv [-h] [-V] [--fish | --pwsh] [directory]
 {__doc__}
@@ -49,6 +53,24 @@ IGNORE_DIRS = "PYAUTOENV_IGNORE_DIR"
 """Directories to ignore and not activate environments within."""
 VENV_NAMES = "PYAUTOENV_VENV_NAME"
 """Directory names to search in for venv virtual environments."""
+
+
+if __debug__:
+    import logging
+
+    LOG_LEVEL = "PYAUTOENV_LOG_LEVEL"
+    """The level to set the logger at."""
+
+    logging.basicConfig(
+        level=getattr(
+            logging,
+            os.environ.get(LOG_LEVEL, "DEBUG").upper(),
+            logging.DEBUG,
+        ),
+        stream=sys.stderr,
+        format="%(name)s: %(levelname)s: [%(asctime)s]: %(message)s",
+    )
+    logger = logging.getLogger("pyautoenv")
 
 
 class Args:
@@ -76,28 +98,75 @@ class Os:
 
 def main(sys_args: List[str], stdout: TextIO) -> int:
     """Write commands to activate/deactivate environments."""
+    if __debug__:
+        logger.debug("main(%s)", sys_args)
     args = parse_args(sys_args, stdout)
     if not os.path.isdir(args.directory):
+        logger.warning(f"path '{args.directory}' is not a directory")
         return 1
     new_activator = discover_env(args)
-    active_env_dir = os.environ.get("VIRTUAL_ENV", None)
+    active_env_dir = active_environment()
     if active_env_dir:
         if not new_activator:
-            stdout.write("deactivate")
-        elif not activator_in_venv(
-            new_activator,
-            active_env_dir,
-        ) and os.path.isfile(new_activator):
-            stdout.write(f"deactivate && . {new_activator}")
-    elif new_activator and os.path.isfile(new_activator):
-        stdout.write(f". '{new_activator}'")
+            deactivate(stdout, args, active_env_dir)
+        elif not activator_in_venv(new_activator, active_env_dir):
+            deactivate_and_activate(stdout, new_activator)
+    elif new_activator:
+        activate(stdout, new_activator)
     return 0
+
+
+def activate(stream: TextIO, activator: str) -> None:
+    """Write the command to execute the given venv activator."""
+    command = f". '{activator}'"
+    if __debug__:
+        logger.debug(f"activate: '{command}'")
+    stream.write(command)
+
+
+def deactivate(stream: TextIO, args: Args, active_env: str) -> None:
+    """Write the deactivation command to the given stream."""
+    old_activator = activator(active_env, args)
+    # In some cases, a virtual environment can be active, but the 'deactivate'
+    # function in the environment is no longer available. This will happen if
+    # you start a new shell whilst an environment is active: VIRTUAL_ENV
+    # persists and the venv will still be on your path, but the 'deactivate'
+    # function won't be available.
+    # To account for this scenario, we first attempt to run deactivate, but
+    # if it fails, we re-activate the currently activate venv to make
+    # 'deactivate' available.
+    # TODO: this still doesn't work, because by re-activating you add the venv
+    # to the system path again. Then the 'deactivate' function restores the
+    # environment variables to the state they were in when 'activate' was
+    # called, which means the venv stays on the system path, although
+    # VIRTUAL_ENV is unset :shrug:.
+    # TODO: this does not work with fish or pwsh.
+    command = f"! deactivate > /dev/null 2>&1 && source {old_activator} && deactivate"
+    if __debug__:
+        logger.debug(f"deactivate: '{command}'")
+    stream.write(command)
+
+
+def deactivate_and_activate(stream: TextIO, new_activator: str) -> None:
+    """Write command to deactivate the current env and activate another."""
+    command = f"! deactivate > /dev/null 2>&1 || source {new_activator}"
+    if __debug__:
+        logger.debug(f"deactivate_and_activate: '{command}'")
+    stream.write(command)
 
 
 def activator_in_venv(activator_path: str, venv_dir: str) -> bool:
     """Return True if the given activator is in the given venv directory."""
     activator_venv_dir = os.path.dirname(os.path.dirname(activator_path))
     return os.path.samefile(activator_venv_dir, venv_dir)
+
+
+def active_environment() -> Union[str, None]:
+    """Return the directory of the currently active environment."""
+    active_env_dir = os.environ.get("VIRTUAL_ENV", None)
+    if __debug__:
+        logger.debug("active_environment: '%s'", active_env_dir)
+    return active_env_dir
 
 
 def parse_args(argv: List[str], stdout: TextIO) -> Args:
@@ -136,19 +205,23 @@ def parse_args(argv: List[str], stdout: TextIO) -> Args:
         raise ValueError(
             f"exactly one positional argument expected, found {len(argv)}",
         )
-    directory = os.path.abspath(argv[0]) if len(argv) else os.getcwd()
+    directory = os.path.abspath(argv[0]) if argv else os.getcwd()
     return Args(directory=directory, fish=fish, pwsh=pwsh)
 
 
 def discover_env(args: Args) -> Union[str, None]:
-    """Find an environment in the given directory or any of its parents."""
+    """Find an environment activator in or above the given directory."""
     while (not dir_is_ignored(args.directory)) and (
         args.directory != os.path.dirname(args.directory)
     ):
-        env_dir = get_virtual_env(args)
-        if env_dir:
-            return env_dir
+        env_activator = get_virtual_env(args)
+        if env_activator:
+            if __debug__:
+                logger.debug("discover_env: '%s'", env_activator)
+            return env_activator
         args.directory = os.path.dirname(args.directory)
+    if __debug__:
+        logger.debug("discover_env: 'None'")
     return None
 
 
@@ -157,7 +230,6 @@ def dir_is_ignored(directory: str) -> bool:
     return any(directory == ignored for ignored in ignored_dirs())
 
 
-@lru_cache(maxsize=128)
 def ignored_dirs() -> List[str]:
     """Get the list of directories to not activate an environment within."""
     dirs = os.environ.get(IGNORE_DIRS, None)
@@ -177,7 +249,12 @@ def get_virtual_env(args: Args) -> Union[str, None]:
 
 
 def venv_activator(args: Args) -> Union[str, None]:
-    """Return the venv activator within the given directory, if it contains a venv."""
+    """
+    Return the venv activator within the given directory.
+
+    Return None if the directory does not contain a venv, or the venv
+    does not contain a suitable activator script.
+    """
     candidate_venv_dirs = venv_candidate_dirs(args)
     for path in candidate_venv_dirs:
         activate_script = activator(path, args)
@@ -187,7 +264,7 @@ def venv_activator(args: Args) -> Union[str, None]:
 
 
 def venv_candidate_dirs(args: Args) -> List[str]:
-    """Get the paths to a list of candidate venvs within the given directory."""
+    """Get a list of candidate venv paths within the given directory."""
     candidate_paths = []
     for venv_name in venv_dir_names():
         candidate_dir = os.path.join(args.directory, venv_name)
@@ -210,7 +287,7 @@ def has_poetry_env(directory: str) -> bool:
 
 def poetry_activator(args: Args) -> Union[str, None]:
     """
-    Return the activator for the venv associated with a poetry project directory.
+    Return the activator associated with a poetry project directory.
 
     If there are multiple poetry environments, pick the one with the
     latest modification time.
@@ -218,7 +295,9 @@ def poetry_activator(args: Args) -> Union[str, None]:
     env_list = poetry_env_list(args.directory)
     if env_list:
         env_dir = max(env_list, key=lambda p: os.stat(p).st_mtime)
-        return activator(env_dir, args)
+        env_activator = activator(env_dir, args)
+        if os.path.isfile(env_activator):
+            return activator(env_dir, args)
     return None
 
 
@@ -245,7 +324,7 @@ def poetry_env_list(directory: str) -> List[str]:
         return []
 
 
-@lru_cache(maxsize=128)
+@lru_cache(maxsize=1)
 def poetry_cache_dir() -> Union[str, None]:
     """Return the poetry cache directory, or None if it's not found."""
     cache_dir = os.environ.get("POETRY_CACHE_DIR", None)
@@ -379,18 +458,19 @@ def activator(env_directory: str, args: Args) -> str:
             and env_directory.startswith(poetry_dir)
             and operating_system() != Os.WINDOWS
         ):
-            # In poetry environments on *NIX systems, this activator has a lowercase A.
+            # In poetry environments on *NIX systems, this activator has
+            # a lowercase A.
             script = "activate.ps1"
         else:
-            # In venv environments, and Windows poetry environments, this activator has
-            # an uppercase A.
+            # In venv environments, and Windows poetry environments,
+            # this activator has an uppercase A.
             script = "Activate.ps1"
     else:
         script = "activate"
-    return os.path.join(env_directory, dir_name, f"{script}")
+    return os.path.join(env_directory, dir_name, script)
 
 
-@lru_cache(maxsize=128)
+@lru_cache(maxsize=1)
 def operating_system() -> Union[int, None]:
     """
     Return the operating system the script's being run on.

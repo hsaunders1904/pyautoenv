@@ -27,7 +27,11 @@ function _pyautoenv_activate() {
     fi
     local pyautoenv_py="${_pyautoenv_path}/pyautoenv.py"
     if [ -f "${pyautoenv_py}" ]; then
-        eval "$(python3 "${pyautoenv_py}")"
+        if [ "${PYAUTOENV_DEBUG-0}" -ne 0 ]; then
+            eval "$(python3 "${pyautoenv_py}")"
+        else
+            eval "$(python3 -O "${pyautoenv_py}")"
+        fi
     fi
 }
 

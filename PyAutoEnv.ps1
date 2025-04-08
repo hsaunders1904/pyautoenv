@@ -37,7 +37,12 @@ function Invoke-PyAutoEnv() {
   }
   $PyAutoEnv = Join-Path "${PyAutoEnvDir}" "pyautoenv.py"
   if (Test-Path "${PyAutoEnv}") {
-    $Expression = "$(python "${PyAutoEnv}" --pwsh)"
+    if (${Env:PYAUTOENV_DEBUG})
+    {
+      $Expression = "$(python "${PyAutoEnv}" --pwsh)"
+    } else {
+      $Expression = "$(python -O "${PyAutoEnv}" --pwsh)"
+    }
     if (${Expression}) {
       Invoke-Expression "${Expression}"
      }
