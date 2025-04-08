@@ -14,24 +14,35 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-_zsh_pyautoenv_path="${0:a:h}"
+_pyautoenv_path="${0:a:h}"
 
-function _zsh_pyautoenv_activate() {
+function _pyautoenv_activate() {
+    add-zsh-hook chpwd _pyautoenv_activate
+    add-zsh-hook -d precmd _pyautoenv_activate
     if [ "${PYAUTOENV_DISABLE-0}" -ne 0 ]; then
         return
     fi
     if [ -z "$(command -v python3)" ]; then
         return
     fi
-    local pyautoenv_py="${_zsh_pyautoenv_path}/pyautoenv.py"
+    local pyautoenv_py="${_pyautoenv_path}/pyautoenv.py"
     if [ -f "${pyautoenv_py}" ]; then
         eval "$(python3 "${pyautoenv_py}")"
     fi
 }
 
-function _zsh_pyautoenv_version() {
-    python3 "${_zsh_pyautoenv_path}/pyautoenv.py" --version
+function _pyautoenv_version() {
+    python3 "${_pyautoenv_path}/pyautoenv.py" --version
 }
 
+# We need to make sure the shell is fully initialised before we activate the
+# virtual environment, otherwise there's some weirdness when the environment
+# is deactivated (the user's zshrc is essentially undone).
+#
+# To work around this, use 'precmd' to run pyautoenv just before the shell
+# prompt is written. Then, within the activate function, remove the 'precmd'
+# hook and hook into 'chpwd' instead, so we only run on a change of directory.
+# The effect of this is that the activation script is run last thing on shell
+# startup and then on any change of directory.
 autoload -Uz add-zsh-hook
-add-zsh-hook chpwd _zsh_pyautoenv_activate
+add-zsh-hook precmd _pyautoenv_activate

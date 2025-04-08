@@ -19,9 +19,12 @@ if ! status --is-interactive
     exit 0
 end
 
+emit _pyautoenv_fish_init
 set _pyautoenv_path (dirname (realpath (status current-filename)))
 
-function _pyautoenv_activate --on-variable PWD \
+function _pyautoenv_activate \
+        --on-variable PWD \
+        --on-event _pyautoenv_fish_init \
         --description 'Activate/deactivate python environments based on the current directory'
     if test -n "$PYAUTOENV_DISABLE"; and test "$PYAUTOENV_DISABLE" != "0"
         return
