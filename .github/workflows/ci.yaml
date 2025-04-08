@@ -18,8 +18,8 @@ jobs:
           pre-commit run --all-files
       - name: Test
         run: |
-          python -m pip install poetry
-          poetry install --only=test
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          uv sync --all-extras
           poetry run pytest --cov --cov-report=term-missing --cov-report=xml
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
@@ -35,6 +35,6 @@ jobs:
           python-version: '3.8'
       - name: Test
         run: |
-          python -m pip install poetry
-          poetry install --only=test
+          powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+          uv sync --extra test
           poetry run pytest --cov --cov-report=term-missing
