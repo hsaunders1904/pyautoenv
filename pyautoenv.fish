@@ -21,7 +21,9 @@ end
 
 set _pyautoenv_path (dirname (realpath (status current-filename)))
 
-function _pyautoenv_activate --on-variable PWD \
+function _pyautoenv_activate \
+        --on-variable PWD \
+        --on-event _pyautoenv_fish_init \
         --description 'Activate/deactivate python environments based on the current directory'
     if test -n "$PYAUTOENV_DISABLE"; and test "$PYAUTOENV_DISABLE" != "0"
         return
@@ -38,3 +40,5 @@ end
 function _pyautoenv_version --description 'Print pyautoenv version'
     python3 "$_pyautoenv_path/pyautoenv.py" --version
 end
+
+emit _pyautoenv_fish_init
