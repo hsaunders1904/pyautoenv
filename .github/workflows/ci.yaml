@@ -17,7 +17,7 @@ jobs:
           python-version: "3.9"
           version: "0.6.13"
       - name: Install pyautoenv
-        run: uv sync --all-extras
+        run: uv sync --all-groups
       - name: Code Quality
         run: |
           uv run pre-commit run --all-files
@@ -44,4 +44,4 @@ jobs:
         run: uv sync --all-extras
       - name: Test
         run: |
-          poetry run pytest --cov --cov-report=term-missing
+          uv run pytest --cov --cov-report=term-missing

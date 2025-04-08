@@ -248,7 +248,6 @@ wheels = [
 [[package]]
 name = "pyautoenv"
 version = "0.7.0"
-source = { virtual = "." }
 
 [package.optional-dependencies]
 dev = [
