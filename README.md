@@ -62,6 +62,8 @@ source <path to pyauotenv>/pyautoenv.bash
 Add this to your `.bashrc` to activate the application permanently.
 
 Note that this script will clobber the `cd` command.
+It is highly recommended to use a more modern shell,
+like ZSH or Fish, when using `pyautoenv`.
 
 </details>
 
@@ -117,3 +119,7 @@ There are some environment variables you can set to configure `pyautoenv`.
   The directories, and their children,
   will be treated as though no virtual environment exists for them.
   This means any active environment will be deactivated when changing to them.
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md).
