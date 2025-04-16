@@ -164,7 +164,7 @@ class PoetryTester(abc.ABC):
         fs.create_file(new_activate)
 
         assert pyautoenv.main(["pyproj2", self.flag], stdout=stdout) == 0
-        assert stdout.getvalue() == f"deactivate && . {new_activate}"
+        assert stdout.getvalue() == f"deactivate && . '{new_activate}'"
 
     def test_does_nothing_if_activate_script_is_not_file(self, fs):
         stdout = StringIO()
