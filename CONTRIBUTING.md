@@ -37,7 +37,7 @@ Install `uv`, by following the instructions in their
 To make a virtual environment and install the development dependencies, run:
 
 ```console
-uv sync --all-extras
+uv sync --all-groups
 ```
 
 ### Tests
