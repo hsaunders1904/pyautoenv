@@ -20,6 +20,7 @@ test = [
   "pytest-benchmark>=5.1.0",
   "pytest-cov>=6.1.1",
   "pytest>=8.3.5",
+  "pytest-profiling>=1.8.1",
 ]
 
 [tool.ruff]
