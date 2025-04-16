@@ -54,6 +54,10 @@ IGNORE_DIRS = "PYAUTOENV_IGNORE_DIR"
 VENV_NAMES = "PYAUTOENV_VENV_NAME"
 """Directory names to search in for venv virtual environments."""
 
+OS_LINUX = 0
+OS_MACOS = 1
+OS_WINDOWS = 2
+
 
 if __debug__:
     import logging
@@ -86,14 +90,6 @@ class Args:
         self.directory = directory
         self.fish = fish
         self.pwsh = pwsh
-
-
-class Os:
-    """Pseudo-enum for supported operating systems."""
-
-    LINUX = 0
-    MACOS = 1
-    WINDOWS = 2
 
 
 def main(sys_args: List[str], stdout: TextIO) -> int:
@@ -149,7 +145,7 @@ def activator_in_venv(activator_path: str, venv_dir: str) -> bool:
 
 def active_environment() -> Union[str, None]:
     """Return the directory of the currently active environment."""
-    active_env_dir = os.environ.get("VIRTUAL_ENV", None)
+    active_env_dir = os.environ.get("VIRTUAL_ENV")
     if __debug__:
         logger.debug("active_environment: '%s'", active_env_dir)
     return active_env_dir
@@ -160,16 +156,11 @@ def parse_args(argv: List[str], stdout: TextIO) -> Args:
     # Avoiding argparse gives a good speed boost and the parsing logic
     # is not too complex. We won't get a full 'bells and whistles' CLI
     # experience, but that's fine for our use-case.
+    if not argv:
+        return Args(os.getcwd())
 
     def parse_exit_flag(argv: List[str], flags: List[str]) -> bool:
         return any(f in argv for f in flags)
-
-    def parse_flag(argv: List[str], flag: str) -> bool:
-        try:
-            argv.pop(argv.index(flag))
-        except ValueError:
-            return False
-        return True
 
     if parse_exit_flag(argv, ["-h", "--help"]):
         stdout.write(CLI_HELP)
@@ -178,6 +169,13 @@ def parse_args(argv: List[str], stdout: TextIO) -> Args:
         stdout.write(f"pyautoenv {__version__}\n")
         sys.exit(0)
 
+    def parse_flag(argv: List[str], flag: str) -> bool:
+        try:
+            argv.pop(argv.index(flag))
+        except ValueError:
+            return False
+        return True
+
     fish = parse_flag(argv, "--fish")
     pwsh = parse_flag(argv, "--pwsh")
     num_activators = sum([fish, pwsh])
@@ -185,6 +183,8 @@ def parse_args(argv: List[str], stdout: TextIO) -> Args:
         raise ValueError(
             f"zero or one activator flag expected, found {num_activators}",
         )
+    if not argv:
+        return Args(os.getcwd(), fish=fish, pwsh=pwsh)
     # ignore empty arguments
     argv = [a for a in argv if a.strip()]
     if len(argv) > 1:
@@ -213,12 +213,13 @@ def discover_env(args: Args) -> Union[str, None]:
 
 def dir_is_ignored(directory: str) -> bool:
     """Return True if the given directory is marked to be ignored."""
-    return any(directory == ignored for ignored in ignored_dirs())
+    return directory in ignored_dirs()
 
 
+@lru_cache(maxsize=1)
 def ignored_dirs() -> List[str]:
     """Get the list of directories to not activate an environment within."""
-    dirs = os.environ.get(IGNORE_DIRS, None)
+    dirs = os.environ.get(IGNORE_DIRS)
     if dirs:
         if __debug__:
             logger.debug(f"ignore_dirs: '{dirs}'")
@@ -240,7 +241,6 @@ def venv_activator(args: Args) -> Union[str, None]:
     """
     Return the venv activator within the given directory.
 
-    Return ``None`` if no venv exists.
     Return None if the directory does not contain a venv, or the venv
     does not contain a suitable activator script.
     """
@@ -257,9 +257,10 @@ def venv_candidate_dirs(args: Args) -> Iterator[str]:
         yield os.path.join(args.directory, venv_name)
 
 
+@lru_cache(maxsize=1)
 def venv_dir_names() -> List[str]:
     """Get the possible names for a venv directory."""
-    name_list = os.environ.get(VENV_NAMES, "")
+    name_list = os.environ.get(VENV_NAMES)
     if name_list:
         if __debug__:
             logger.debug(f"venv_dir_names: '{name_list}")
@@ -314,15 +315,15 @@ def poetry_env_list(directory: str) -> List[str]:
 @lru_cache(maxsize=1)
 def poetry_cache_dir() -> Union[str, None]:
     """Return the poetry cache directory, or None if it's not found."""
-    cache_dir = os.environ.get("POETRY_CACHE_DIR", None)
+    cache_dir = os.environ.get("POETRY_CACHE_DIR")
     if cache_dir and os.path.isdir(cache_dir):
         return cache_dir
     op_sys = operating_system()
-    if op_sys == Os.WINDOWS:
+    if op_sys == OS_WINDOWS:
         return windows_poetry_cache_dir()
-    if op_sys == Os.MACOS:
+    if op_sys == OS_MACOS:
         return macos_poetry_cache_dir()
-    if op_sys == Os.LINUX:
+    if op_sys == OS_LINUX:
         return linux_poetry_cache_dir()
     return None
 
@@ -383,7 +384,6 @@ def poetry_env_name(directory: str) -> Union[str, None]:
     import base64
     import hashlib
 
-    name = name.lower()
     sanitized_name = (
         # This is a bit ugly, but it's more performant than using a regex.
         # The import time for the 're' module is also a factor.
@@ -397,8 +397,9 @@ def poetry_env_name(directory: str) -> Union[str, None]:
         .replace("\r", "_")
         .replace("\n", "_")
         .replace("\t", "_")
+        .lower()[:42]
     )
-    normalized_path = os.path.normcase(os.path.realpath(directory))
+    normalized_path = os.path.normcase(directory)
     path_hash = hashlib.sha256(normalized_path.encode()).digest()
     b64_hash = base64.urlsafe_b64encode(path_hash).decode()[:8]
     return f"{sanitized_name}-{b64_hash}"
@@ -409,34 +410,43 @@ def poetry_project_name(directory: str) -> Union[str, None]:
     pyproject_file_path = os.path.join(directory, "pyproject.toml")
     try:
         with open(pyproject_file_path, encoding="utf-8") as pyproject_file:
-            pyproject_lines = pyproject_file.readlines()
+            return parse_name_from_pyproject_file(pyproject_file)
     except OSError:
         return None
+
+
+def parse_name_from_pyproject_file(file: TextIO) -> Union[str, None]:
+    """
+    Parse the project name from a pyproject.toml file.
+
+    Return ``None`` if the name cannot be parsed.
+    """
     # Ideally we'd use a proper TOML parser to do this, but there isn't
     # one available in the standard library until Python 3.11. This
     # hacked together parser should work for the vast majority of cases.
-    in_tool_poetry_section = False
-    for line in pyproject_lines:
-        if line.strip() in ["[tool.poetry]", "[project]"]:
-            in_tool_poetry_section = True
-            continue
-        if line.strip().startswith("["):
-            in_tool_poetry_section = False
-        if not in_tool_poetry_section:
-            continue
-        try:
-            key, val = (part.strip().strip('"') for part in line.split("="))
-        except ValueError:
-            continue
-        if key == "name":
-            return val
+    for line in file:
+        line = line.strip()  # noqa: PLW2901
+        if line in ("[project]", "[tool.poetry]"):
+            for project_line in file:
+                if project_line.startswith("["):
+                    # New block started without finding the project name.
+                    return None
+                try:
+                    key, val = (
+                        part.strip().strip('"')
+                        for part in project_line.split("=", maxsplit=1)
+                    )
+                except ValueError:
+                    continue
+                if key == "name":
+                    return val
     return None
 
 
 def activator(env_directory: str, args: Args) -> str:
     """Get the activator script for the environment in the given directory."""
-    is_windows = operating_system() == Os.WINDOWS
-    dir_name = "Scripts" if is_windows else "bin"
+    is_windows = operating_system() == OS_WINDOWS
+    bin_dir = "Scripts" if is_windows else "bin"
     if args.fish:
         script = "activate.fish"
     elif args.pwsh:
@@ -447,15 +457,15 @@ def activator(env_directory: str, args: Args) -> str:
             # slightly inconsistent naming. When using Poetry or uv, the
             # activation script is lower case, using the venv module,
             # the script is title case.
-            # We can't really know what was used to generate the venv
+            # We can't really know what was used to generate the venv,
             # so just check which activation script exists.
-            script_path = os.path.join(env_directory, dir_name, "activate.ps1")
+            script_path = os.path.join(env_directory, bin_dir, "activate.ps1")
             if os.path.isfile(script_path):
                 return script_path
             script = "Activate.ps1"
     else:
         script = "activate"
-    return os.path.join(env_directory, dir_name, script)
+    return os.path.join(env_directory, bin_dir, script)
 
 
 @lru_cache(maxsize=1)
@@ -466,18 +476,18 @@ def operating_system() -> Union[int, None]:
     Return 'None' if we're on an operating system we can't handle.
     """
     if sys.platform.startswith("darwin"):
-        return Os.MACOS
+        return OS_MACOS
     if sys.platform.startswith("win"):
-        return Os.WINDOWS
+        return OS_WINDOWS
     if sys.platform.startswith("linux"):
-        return Os.LINUX
+        return OS_LINUX
     return None
 
 
 if __name__ == "__main__":
     try:
         sys.exit(main(sys.argv[1:], sys.stdout))
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         sys.stderr.write(f"pyautoenv: error: {exc}\n")
         if __debug__:
             logger.exception("error backtrace:")

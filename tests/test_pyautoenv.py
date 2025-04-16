@@ -35,13 +35,13 @@ def test_main_does_nothing_given_directory_does_not_exist():
 @pytest.mark.parametrize(
     ("os_name", "enum_value"),
     [
-        ("linux2", pyautoenv.Os.LINUX),
-        ("darwin", pyautoenv.Os.MACOS),
-        ("win32", pyautoenv.Os.WINDOWS),
+        ("linux2", pyautoenv.OS_LINUX),
+        ("darwin", pyautoenv.OS_MACOS),
+        ("win32", pyautoenv.OS_WINDOWS),
         ("Java", None),
     ],
 )
-def test_operating_system_returns_enum_based_on_sys_platform(
+def test_operating_system_returns_value_based_on_sys_platform(
     os_name,
     enum_value,
 ):

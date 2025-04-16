@@ -28,6 +28,7 @@ import pyautoenv
 from tests.tools import (
     OPERATING_SYSTEM,
     activate_venv,
+    clear_lru_caches,
     make_poetry_project,
     root_dir,
 )
@@ -93,7 +94,7 @@ class PoetryTester(abc.ABC):
         return fs
 
     def setup_method(self):
-        pyautoenv.poetry_cache_dir.cache_clear()
+        clear_lru_caches(pyautoenv)
         self.os_patch = mock.patch(OPERATING_SYSTEM, return_value=self.os)
         self.os_patch.start()
         os.environ = copy.deepcopy(self.env)  # noqa: B003
@@ -301,7 +302,7 @@ class PoetryLinuxTester(PoetryTester):
         "HOME": str(root_dir() / "home" / "user"),
         "USERPROFILE": str(root_dir() / "home" / "user"),
     }
-    os = pyautoenv.Os.LINUX
+    os = pyautoenv.OS_LINUX
     poetry_cache = (
         root_dir() / "home" / "user" / ".cache" / "pypoetry" / "virtualenvs"
     )
@@ -327,7 +328,7 @@ class PoetryMacosTester(PoetryTester):
         "HOME": str(root_dir() / "Users" / "user"),
         "USERPROFILE": str(root_dir() / "Users" / "user"),
     }
-    os = pyautoenv.Os.MACOS
+    os = pyautoenv.OS_MACOS
     poetry_cache = (
         root_dir()
         / "Users"
@@ -358,7 +359,7 @@ class TestPoetryPwshWindows(PoetryTester):
     activator = Path("Scripts/Activate.ps1")
     env = {"LOCALAPPDATA": str(root_dir() / "Users/user/AppData/Local")}
     flag = "--pwsh"
-    os = pyautoenv.Os.WINDOWS
+    os = pyautoenv.OS_WINDOWS
     poetry_cache = (
         root_dir()
         / "Users"

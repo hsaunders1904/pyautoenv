@@ -26,6 +26,7 @@ import pyautoenv
 from tests.tools import (
     OPERATING_SYSTEM,
     activate_venv,
+    clear_lru_caches,
     make_poetry_project,
     root_dir,
 )
@@ -51,7 +52,7 @@ class VenvTester(abc.ABC):
         """The name of the activator script."""
 
     def setup_method(self):
-        pyautoenv.poetry_cache_dir.cache_clear()
+        clear_lru_caches(pyautoenv)
         os.environ = {}  # noqa: B003
         self.os_patch = mock.patch(OPERATING_SYSTEM, return_value=self.os)
         self.os_patch.start()
@@ -198,22 +199,22 @@ class VenvTester(abc.ABC):
 class TestVenvBashLinux(VenvTester):
     activator = "bin/activate"
     flag = ""
-    os = pyautoenv.Os.LINUX
+    os = pyautoenv.OS_LINUX
 
 
 class TestVenvPwshLinux(VenvTester):
     activator = "bin/Activate.ps1"
     flag = "--pwsh"
-    os = pyautoenv.Os.LINUX
+    os = pyautoenv.OS_LINUX
 
 
 class TestVenvFishLinux(VenvTester):
     activator = "bin/activate.fish"
     flag = "--fish"
-    os = pyautoenv.Os.LINUX
+    os = pyautoenv.OS_LINUX
 
 
 class TestVenvPwshWindows(VenvTester):
     activator = "Scripts/Activate.ps1"
     flag = "--pwsh"
-    os = pyautoenv.Os.WINDOWS
+    os = pyautoenv.OS_WINDOWS
