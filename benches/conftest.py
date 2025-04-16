@@ -13,6 +13,7 @@ from typing_extensions import Buffer
 
 import pyautoenv
 from benches.tools import environment_variable, make_venv
+from tests.tools import clear_lru_caches
 
 POETRY_PYPROJECT = """[project]
 name = "{project_name}"
@@ -38,8 +39,7 @@ build-backend = "poetry.core.masonry.api"
 @pytest.fixture(autouse=True)
 def reset_caches() -> None:
     """Reset the LRU caches in pyautoenv."""
-    pyautoenv.poetry_cache_dir.cache_clear()
-    pyautoenv.operating_system.cache_clear()
+    clear_lru_caches(pyautoenv)
 
 
 @pytest.fixture(autouse=True, scope="module")

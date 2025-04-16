@@ -15,9 +15,12 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """Utility functions for tests."""
 
+import inspect
 import os
+from functools import lru_cache
 from pathlib import Path
-from typing import Union
+from types import ModuleType
+from typing import Protocol, Union
 
 from pyfakefs.fake_filesystem import FakeFilesystem
 
@@ -70,3 +73,24 @@ def root_dir() -> Path:
     our tests.
     """
     return Path(os.path.abspath("/"))
+
+
+def clear_lru_caches(module: ModuleType) -> None:
+    """Clear all the caches in ``lru_cache`` decorated functions."""
+    for func in _find_lru_cached_functions(module):
+        func.cache_clear()
+
+
+class _LruCachedFunction(Protocol):
+    def cache_clear(self) -> None: ...
+
+
+@lru_cache
+def _find_lru_cached_functions(module: ModuleType) -> list[_LruCachedFunction]:
+    """Find all function that are decorated with ``lru_cache``."""
+    return [
+        func
+        for _, func in inspect.getmembers(
+            module, lambda x: hasattr(x, "cache_clear")
+        )
+    ]
