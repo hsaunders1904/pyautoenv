@@ -134,7 +134,7 @@ def deactivate(stream: TextIO) -> None:
 
 def deactivate_and_activate(stream: TextIO, new_activator: str) -> None:
     """Write command to deactivate the current env and activate another."""
-    command = f"deactivate && . {new_activator}"
+    command = f"deactivate && . '{new_activator}'"
     if __debug__:
         logger.debug("deactivate_and_activate: '%s'", command)
     stream.write(command)
