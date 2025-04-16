@@ -44,23 +44,28 @@ class PoetryTester(abc.ABC):
         """The path to directory that does not contain an poetry project."""
         return Path("not_a_poetry_proj")
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def os(self) -> int:
         """The operating system the class is testing on."""
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def flag(self) -> str:
         """The command line flag to select the activator."""
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def activator(self) -> Path:
         """The path of the activator script relative to the venv dir."""
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def poetry_cache(self) -> Path:
         """The path to the directory containing poetry virtual environments."""
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def env(self) -> Dict[str, str]:
         """The environment variables to be present during the test."""
 
