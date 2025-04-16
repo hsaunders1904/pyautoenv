@@ -23,7 +23,7 @@ jobs:
           uv run pre-commit run --all-files
       - name: Test
         run: |
-          uv run pytest --cov --cov-report=term-missing --cov-report=xml
+          uv run pytest --cov --cov-report=term-missing --cov-report=xml --benchmark-disable
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
@@ -44,4 +44,4 @@ jobs:
         run: uv sync --all-groups
       - name: Test
         run: |
-          uv run pytest --cov --cov-report=term-missing
+          uv run pytest --cov --cov-report=term-missing --benchmark-disable
