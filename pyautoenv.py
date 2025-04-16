@@ -34,7 +34,7 @@ set to any supported by Python's 'logging' module.
 import os
 import sys
 from functools import lru_cache
-from typing import List, TextIO, Union
+from typing import Iterator, List, TextIO, Union
 
 __version__ = "0.7.0"
 
@@ -244,21 +244,17 @@ def venv_activator(args: Args) -> Union[str, None]:
     Return None if the directory does not contain a venv, or the venv
     does not contain a suitable activator script.
     """
-    candidate_venv_dirs = venv_candidate_dirs(args)
-    for path in candidate_venv_dirs:
+    for path in venv_candidate_dirs(args):
         activate_script = activator(path, args)
         if os.path.isfile(activate_script):
             return activate_script
     return None
 
 
-def venv_candidate_dirs(args: Args) -> List[str]:
-    """Get a list of candidate venv paths within the given directory."""
-    candidate_paths = []
+def venv_candidate_dirs(args: Args) -> Iterator[str]:
+    """Get candidate venv paths within the given directory."""
     for venv_name in venv_dir_names():
-        candidate_dir = os.path.join(args.directory, venv_name)
-        candidate_paths.append(candidate_dir)
-    return candidate_paths
+        yield os.path.join(args.directory, venv_name)
 
 
 def venv_dir_names() -> List[str]:
