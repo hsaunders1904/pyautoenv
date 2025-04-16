@@ -35,15 +35,18 @@ class VenvTester(abc.ABC):
     PY_PROJ = root_dir() / "python_project"
     VENV_DIR = PY_PROJ / ".venv"
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def os(self) -> int:
         """The operating system the class is testing on."""
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def flag(self) -> str:
         """The command line flag to select the activator."""
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def activator(self) -> str:
         """The name of the activator script."""
 
