@@ -17,7 +17,7 @@ Python environment when you cd into the directory that defines that environment
 contains a `poetry.lock` file or a `.venv/` directory).
 Environments are automatically deactivated when you leave the directory.
 
-Supports Python versions 3.8 and up.
+Supports Python versions 3.9 and up.
 
 ## Install
 
