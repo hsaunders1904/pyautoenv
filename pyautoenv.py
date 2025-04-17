@@ -177,7 +177,11 @@ def get_virtual_env(args: Args) -> Union[str, None]:
 
 
 def venv_activator(args: Args) -> Union[str, None]:
-    """Return the venv activator within the given directory, if it contains a venv."""
+    """
+    Return the venv activator within the given directory.
+
+    Return ``None`` if no venv exists.
+    """
     candidate_venv_dirs = venv_candidate_dirs(args)
     for path in candidate_venv_dirs:
         activate_script = activator(path, args)
@@ -187,7 +191,7 @@ def venv_activator(args: Args) -> Union[str, None]:
 
 
 def venv_candidate_dirs(args: Args) -> List[str]:
-    """Get the paths to a list of candidate venvs within the given directory."""
+    """Get a list of candidate venv paths within the given directory."""
     candidate_paths = []
     for venv_name in venv_dir_names():
         candidate_dir = os.path.join(args.directory, venv_name)
@@ -210,7 +214,7 @@ def has_poetry_env(directory: str) -> bool:
 
 def poetry_activator(args: Args) -> Union[str, None]:
     """
-    Return the activator for the venv associated with a poetry project directory.
+    Return the venv activator for a poetry project directory.
 
     If there are multiple poetry environments, pick the one with the
     latest modification time.
@@ -379,11 +383,12 @@ def activator(env_directory: str, args: Args) -> str:
             and env_directory.startswith(poetry_dir)
             and operating_system() != Os.WINDOWS
         ):
-            # In poetry environments on *NIX systems, this activator has a lowercase A.
+            # In poetry environments on *NIX systems, this activator has
+            # a lowercase A.
             script = "activate.ps1"
         else:
-            # In venv environments, and Windows poetry environments, this activator has
-            # an uppercase A.
+            # In venv environments, and Windows poetry environments,
+            # this activator has an uppercase A.
             script = "Activate.ps1"
     else:
         script = "activate"
