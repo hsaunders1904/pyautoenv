@@ -18,15 +18,15 @@ jobs:
       - name: Validate Version
         run: |
           python -m pip install toml
-          poetry_version="$(python -c 'import toml; print(toml.load("pyproject.toml")["tool"]["poetry"]["version"])')"
-          echo "Version from input:  ${{ github.event.inputs.version }}"
-          echo "Version from poetry: ${poetry_version}"
-          if ! [ "${{ github.event.inputs.version }}" = "${poetry_version}" ]; then
+          pyproject_version="$(python -c 'import toml; print(toml.load("pyproject.toml")["project"]["version"])')"
+          echo "Version from input:          ${{ github.event.inputs.version }}"
+          echo "Version from pyproject.toml: ${pyproject_version}"
+          if ! [ "${{ github.event.inputs.version }}" = "${pyproject_version}" ]; then
             exit 1;
           fi
           script_version="$(python -c 'import pyautoenv; print(pyautoenv.__version__)')"
-          echo "Version from script: ${script_version}"
-          if ! [ "${poetry_version}" = "${script_version}" ]; then
+          echo "Version from script:         ${script_version}"
+          if ! [ "${pyproject_version}" = "${script_version}" ]; then
             exit 1;
           fi
       - name: Release
