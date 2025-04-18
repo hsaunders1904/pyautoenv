@@ -373,26 +373,27 @@ def poetry_project_name(directory: str) -> Union[str, None]:
 
 def activator(env_directory: str, args: Args) -> str:
     """Get the activator script for the environment in the given directory."""
-    dir_name = "Scripts" if operating_system() == Os.WINDOWS else "bin"
+    is_windows = operating_system() == Os.WINDOWS
+    dir_name = "Scripts" if is_windows else "bin"
     if args.fish:
         script = "activate.fish"
     elif args.pwsh:
-        poetry_dir = poetry_cache_dir()
-        if (
-            poetry_dir is not None
-            and env_directory.startswith(poetry_dir)
-            and operating_system() != Os.WINDOWS
-        ):
-            # In poetry environments on *NIX systems, this activator has
-            # a lowercase A.
-            script = "activate.ps1"
+        if is_windows:
+            script = "Activate.ps1"
         else:
-            # In venv environments, and Windows poetry environments,
-            # this activator has an uppercase A.
+            # PowerShell activation scripts on Nix systems have some
+            # slightly inconsistent naming. When using Poetry or uv, the
+            # activation script is lower case, using the venv module,
+            # the script is title case.
+            # We can't really know what was used to generate the venv
+            # so just check which activation script exists.
+            script_path = os.path.join(env_directory, dir_name, "activate.ps1")
+            if os.path.isfile(script_path):
+                return script_path
             script = "Activate.ps1"
     else:
         script = "activate"
-    return os.path.join(env_directory, dir_name, f"{script}")
+    return os.path.join(env_directory, dir_name, script)
 
 
 @lru_cache(maxsize=128)
