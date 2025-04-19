@@ -116,6 +116,10 @@ There are some environment variables you can set to configure `pyautoenv`.
   The directories, and their children,
   will be treated as though no virtual environment exists for them.
   This means any active environment will be deactivated when changing to them.
+- `PYAUTOENV_DEBUG`: Set to a non-zero value to enable logging.
+  When active, you can also use `PYAUTOENV_LOG_LEVEL`
+  to set the logging level to something supported by Python's `logging` module.
+  The default log level is `DEBUG`.
 
 ## Contributing
 
