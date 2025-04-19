@@ -31,14 +31,18 @@ function _pyautoenv_activate \
     if ! command --search python3 >/dev/null
         return
     end
-    set _pyautoenv_py "$_pyautoenv_path/pyautoenv.py"
+    set --local _pyautoenv_py "$_pyautoenv_path/pyautoenv.py"
     if test -f "$_pyautoenv_py"
-        eval (python3 "$_pyautoenv_py" --fish)
+        if not set -q PYAUTOENV_DEBUG; or test $PYAUTOENV_DEBUG -eq 0
+            eval (python3 -OO "$_pyautoenv_py" --fish)
+        else
+            eval (python3 "$_pyautoenv_py" --fish)
+        end
     end
 end
 
 function _pyautoenv_version --description 'Print pyautoenv version'
-    python3 "$_pyautoenv_path/pyautoenv.py" --version
+    python3 -O "$_pyautoenv_path/pyautoenv.py" --version
 end
 
 emit _pyautoenv_fish_init

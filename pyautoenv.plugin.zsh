@@ -27,12 +27,16 @@ function _pyautoenv_activate() {
     fi
     local pyautoenv_py="${_pyautoenv_path}/pyautoenv.py"
     if [ -f "${pyautoenv_py}" ]; then
-        eval "$(python3 "${pyautoenv_py}")"
+        if [ "${PYAUTOENV_DEBUG-0}" -ne 0 ]; then
+            eval "$(python3 "${pyautoenv_py}")"
+        else
+            eval "$(python3 -OO "${pyautoenv_py}")"
+        fi
     fi
 }
 
 function _pyautoenv_version() {
-    python3 "${_pyautoenv_path}/pyautoenv.py" --version
+    python3 -O "${_pyautoenv_path}/pyautoenv.py" --version
 }
 
 # We need to make sure the shell is fully initialised before we activate the

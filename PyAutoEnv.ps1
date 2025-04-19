@@ -33,7 +33,12 @@ function Invoke-PyAutoEnv() {
   }
   $pyAutoEnv = Join-Path "${pyAutoEnvDir}" "pyautoenv.py"
   if (Test-Path "${pyAutoEnv}") {
-    $expression = "$(python "${pyAutoEnv}" --pwsh)"
+    if (-Not "${Env:PYAUTOENV_DEBUG}" -Or "${Env:PYAUTOENV_DEBUG}" -Eq "0") {
+      $expression = "$(python -OO "${pyAutoEnv}" --pwsh)"
+    }
+    else {
+      $expression = "$(python "${pyAutoEnv}" --pwsh)"
+    }
     if (${expression}) {
       Invoke-Expression "${expression}"
     }
@@ -48,7 +53,7 @@ function Invoke-PyAutoEnv() {
 #>
 function Invoke-PyAutoEnvVersion() {
   $pyAutoEnv = Join-Path "${pyAutoEnvDir}" "pyautoenv.py"
-  python "${pyAutoEnv}" --version
+  python -O "${pyAutoEnv}" --version
 }
 
 <#
