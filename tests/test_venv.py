@@ -63,7 +63,7 @@ class VenvTester(abc.ABC):
         fs.create_dir(self.PY_PROJ / "src")
         fs.create_file(self.VENV_DIR / "bin" / "activate")
         fs.create_file(self.VENV_DIR / "bin" / "activate.fish")
-        fs.create_file(self.VENV_DIR / "bin" / "Activate.ps1")
+        fs.create_file(self.VENV_DIR / "bin" / "activate.ps1")
         fs.create_file(self.VENV_DIR / "Scripts" / "activate")
         fs.create_file(self.VENV_DIR / "Scripts" / "Activate.ps1")
         fs.create_dir("not_a_venv")
@@ -200,7 +200,7 @@ class TestVenvBashLinux(VenvTester):
 
 
 class TestVenvPwshLinux(VenvTester):
-    activator = "bin/Activate.ps1"
+    activator = "bin/activate.ps1"
     flag = "--pwsh"
     os = pyautoenv.Os.LINUX
 
