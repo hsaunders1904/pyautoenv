@@ -17,7 +17,6 @@
 _pyautoenv_path="${0:a:h}"
 
 function _pyautoenv_activate() {
-    add-zsh-hook chpwd _pyautoenv_activate
     add-zsh-hook -d precmd _pyautoenv_activate
     if [ "${PYAUTOENV_DISABLE-0}" -ne 0 ]; then
         return
@@ -44,9 +43,10 @@ function _pyautoenv_version() {
 # is deactivated (the user's zshrc is essentially undone).
 #
 # To work around this, use 'precmd' to run pyautoenv just before the shell
-# prompt is written. Then, within the activate function, remove the 'precmd'
-# hook and hook into 'chpwd' instead, so we only run on a change of directory.
+# prompt is written. Then, within the activation function, remove the 'precmd'
+# hook. We also hook into 'chpwd'
 # The effect of this is that the activation script is run last thing on shell
 # startup and then on any change of directory.
 autoload -Uz add-zsh-hook
+add-zsh-hook chpwd _pyautoenv_activate
 add-zsh-hook precmd _pyautoenv_activate
