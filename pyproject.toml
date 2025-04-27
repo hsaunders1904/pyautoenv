@@ -1,6 +1,6 @@
 [project]
 name = "pyautoenv"
-version = "0.7.0"
+version = "0.7.1"
 description = "Print a command to activate or deactivate a Python venv based on a directory."
 authors = [
   {name = "Harry Saunders", email = "33317174+hsaunders1904@users.noreply.github.com"}
