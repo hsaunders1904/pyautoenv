@@ -36,7 +36,7 @@ import sys
 from functools import lru_cache
 from typing import Iterator, List, TextIO, Union
 
-__version__ = "0.7.0"
+__version__ = "0.7.1"
 
 CLI_HELP = f"""usage: pyautoenv [-h] [-V] [--fish | --pwsh] [directory]
 {__doc__}
