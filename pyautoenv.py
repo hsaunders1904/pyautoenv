@@ -244,6 +244,8 @@ def venv_activator(args: Args) -> Union[str, None]:
     """
     for path in venv_candidate_dirs(args):
         for activate_script in iter_candidate_activators(path, args):
+            if __debug__:
+                logger.debug("venv_activator: candidate '%s'", activate_script)
             if os.path.isfile(activate_script):
                 return activate_script
     return None
@@ -280,6 +282,10 @@ def poetry_activator(args: Args) -> Union[str, None]:
     if env_list:
         env_dir = max(env_list, key=lambda p: os.stat(p).st_mtime)
         for env_activator in iter_candidate_activators(env_dir, args):
+            if __debug__:
+                logger.debug(
+                    "poetry_activator: candidate: '%s'", env_activator
+                )
             if os.path.isfile(env_activator):
                 return env_activator
     return None
@@ -296,15 +302,23 @@ def poetry_env_list(directory: str) -> List[str]:
     if cache_dir is None:
         return []
     env_name = poetry_env_name(directory)
+    if __debug__:
+        logger.debug("poetry_env_list: env name: '%s'", env_name)
     if env_name is None:
         return []
+    virtual_env_path = os.path.join(cache_dir, "virtualenvs")
+    if __debug__:
+        logger.debug("poetry_env_list: venvs path: '%s'", virtual_env_path)
     try:
         return [
             f.path
-            for f in os.scandir(os.path.join(cache_dir, "virtualenvs"))
+            for f in os.scandir(virtual_env_path)
             if f.name.startswith(f"{env_name}-py")
         ]
     except OSError:
+        if __debug__:
+            logger.debug("poetry_env_list: os error:")
+            logger.exception("")
         return []
 
 
