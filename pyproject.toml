@@ -17,6 +17,7 @@ dev = [
 ]
 test = [
   "pyfakefs>=5.8.0",
+  "pytest-benchmark>=5.1.0",
   "pytest-cov>=6.1.1",
   "pytest>=8.3.5",
   "toml>=0.10.2",
@@ -27,8 +28,8 @@ target-version = "py39"
 line-length = 79
 
 [tool.coverage.report]
-"exclude_lines" = ["if __name__ == .__main__.:"]
-"omit" = ["test_*.py"]
+exclude_lines = ["if __name__ == .__main__.:"]
+omit = ["tests/*", "benches/*"]
 
 [tool.mypy]
 ignore_missing_imports = true

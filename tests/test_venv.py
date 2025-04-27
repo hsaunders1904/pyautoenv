@@ -26,6 +26,7 @@ import pyautoenv
 from tests.tools import (
     OPERATING_SYSTEM,
     activate_venv,
+    clear_lru_caches,
     make_poetry_project,
     root_dir,
 )
@@ -35,20 +36,23 @@ class VenvTester(abc.ABC):
     PY_PROJ = root_dir() / "python_project"
     VENV_DIR = PY_PROJ / ".venv"
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def os(self) -> int:
         """The operating system the class is testing on."""
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def flag(self) -> str:
         """The command line flag to select the activator."""
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def activator(self) -> str:
         """The name of the activator script."""
 
     def setup_method(self):
-        pyautoenv.poetry_cache_dir.cache_clear()
+        clear_lru_caches(pyautoenv)
         os.environ = {}  # noqa: B003
         self.os_patch = mock.patch(OPERATING_SYSTEM, return_value=self.os)
         self.os_patch.start()
@@ -64,7 +68,7 @@ class VenvTester(abc.ABC):
         fs.create_file(self.VENV_DIR / "bin" / "activate.fish")
         fs.create_file(self.VENV_DIR / "bin" / "activate.ps1")
         fs.create_file(self.VENV_DIR / "Scripts" / "activate")
-        fs.create_file(self.VENV_DIR / "Scripts" / "Activate.ps1")
+        fs.create_file(self.VENV_DIR / "Scripts" / "activate.ps1")
         fs.create_dir("not_a_venv")
         return fs
 
@@ -116,7 +120,7 @@ class VenvTester(abc.ABC):
         activate_venv(self.VENV_DIR)
 
         assert pyautoenv.main(["pyproj2", self.flag], stdout=stdout) == 0
-        assert stdout.getvalue() == f"deactivate && . {new_venv_activate}"
+        assert stdout.getvalue() == f"deactivate && . '{new_venv_activate}'"
 
     @mock.patch("pyautoenv.poetry_activator")
     def test_deactivate_and_activate_switching_to_poetry(
@@ -134,7 +138,7 @@ class VenvTester(abc.ABC):
         fs.create_file(activator)
 
         assert pyautoenv.main(["poetry_proj", self.flag], stdout) == 0
-        assert stdout.getvalue() == f"deactivate && . {activator}"
+        assert stdout.getvalue() == f"deactivate && . '{activator}'"
 
     def test_does_nothing_if_activate_script_is_not_file(self, fs):
         stdout = StringIO()
@@ -195,22 +199,22 @@ class VenvTester(abc.ABC):
 class TestVenvBashLinux(VenvTester):
     activator = "bin/activate"
     flag = ""
-    os = pyautoenv.Os.LINUX
+    os = pyautoenv.OS_LINUX
 
 
 class TestVenvPwshLinux(VenvTester):
     activator = "bin/activate.ps1"
     flag = "--pwsh"
-    os = pyautoenv.Os.LINUX
+    os = pyautoenv.OS_LINUX
 
 
 class TestVenvFishLinux(VenvTester):
     activator = "bin/activate.fish"
     flag = "--fish"
-    os = pyautoenv.Os.LINUX
+    os = pyautoenv.OS_LINUX
 
 
 class TestVenvPwshWindows(VenvTester):
-    activator = "Scripts/Activate.ps1"
+    activator = "Scripts/activate.ps1"
     flag = "--pwsh"
-    os = pyautoenv.Os.WINDOWS
+    os = pyautoenv.OS_WINDOWS

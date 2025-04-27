@@ -28,6 +28,7 @@ import pyautoenv
 from tests.tools import (
     OPERATING_SYSTEM,
     activate_venv,
+    clear_lru_caches,
     make_poetry_project,
     root_dir,
 )
@@ -44,23 +45,28 @@ class PoetryTester(abc.ABC):
         """The path to directory that does not contain an poetry project."""
         return Path("not_a_poetry_proj")
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def os(self) -> int:
         """The operating system the class is testing on."""
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def flag(self) -> str:
         """The command line flag to select the activator."""
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def activator(self) -> Path:
         """The path of the activator script relative to the venv dir."""
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def poetry_cache(self) -> Path:
         """The path to the directory containing poetry virtual environments."""
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def env(self) -> Dict[str, str]:
         """The environment variables to be present during the test."""
 
@@ -84,11 +90,11 @@ class PoetryTester(abc.ABC):
         fs.create_file(self.venv_dir / "bin" / "activate")
         fs.create_file(self.venv_dir / "bin" / "activate.ps1")
         fs.create_file(self.venv_dir / "bin" / "activate.fish")
-        fs.create_file(self.venv_dir / "Scripts" / "Activate.ps1")
+        fs.create_file(self.venv_dir / "Scripts" / "activate.ps1")
         return fs
 
     def setup_method(self):
-        pyautoenv.poetry_cache_dir.cache_clear()
+        clear_lru_caches(pyautoenv)
         self.os_patch = mock.patch(OPERATING_SYSTEM, return_value=self.os)
         self.os_patch.start()
         os.environ = copy.deepcopy(self.env)  # noqa: B003
@@ -164,7 +170,7 @@ class PoetryTester(abc.ABC):
         fs.create_file(new_activate)
 
         assert pyautoenv.main(["pyproj2", self.flag], stdout=stdout) == 0
-        assert stdout.getvalue() == f"deactivate && . {new_activate}"
+        assert stdout.getvalue() == f"deactivate && . '{new_activate}'"
 
     def test_does_nothing_if_activate_script_is_not_file(self, fs):
         stdout = StringIO()
@@ -296,7 +302,7 @@ class PoetryLinuxTester(PoetryTester):
         "HOME": str(root_dir() / "home" / "user"),
         "USERPROFILE": str(root_dir() / "home" / "user"),
     }
-    os = pyautoenv.Os.LINUX
+    os = pyautoenv.OS_LINUX
     poetry_cache = (
         root_dir() / "home" / "user" / ".cache" / "pypoetry" / "virtualenvs"
     )
@@ -322,7 +328,7 @@ class PoetryMacosTester(PoetryTester):
         "HOME": str(root_dir() / "Users" / "user"),
         "USERPROFILE": str(root_dir() / "Users" / "user"),
     }
-    os = pyautoenv.Os.MACOS
+    os = pyautoenv.OS_MACOS
     poetry_cache = (
         root_dir()
         / "Users"
@@ -350,10 +356,10 @@ class TestPoetryFishMacos(PoetryMacosTester):
 
 
 class TestPoetryPwshWindows(PoetryTester):
-    activator = Path("Scripts/Activate.ps1")
+    activator = Path("Scripts/activate.ps1")
     env = {"LOCALAPPDATA": str(root_dir() / "Users/user/AppData/Local")}
     flag = "--pwsh"
-    os = pyautoenv.Os.WINDOWS
+    os = pyautoenv.OS_WINDOWS
     poetry_cache = (
         root_dir()
         / "Users"

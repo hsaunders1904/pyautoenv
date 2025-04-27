@@ -51,6 +51,14 @@ To run the test suite:
 uv run pytest tests/
 ```
 
+### Benchmarks
+
+To monitor performance, a set of benchmarks can be run:
+
+```console
+uv run pytest benches/
+```
+
 ### Code Quality
 
 Python linting and code formatting is provided by `ruff`.
