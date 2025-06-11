@@ -41,7 +41,7 @@ plugins=(
 If you're not using `oh-my-zsh`, `source` the `pyautoenv.plugin.zsh` script.
 
 ```zsh
-source pyauotenv.plugin.zsh
+source pyautoenv.plugin.zsh
 ```
 
 Add this to your `.zshrc` to activate the application permanently.
