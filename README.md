@@ -56,7 +56,7 @@ Add this to your `.zshrc` to activate the application permanently.
 To enable the application in bash, source the bash script.
 
 ```bash
-source <path to pyauotenv>/pyautoenv.bash
+source <path to pyautoenv>/pyautoenv.bash
 ```
 
 Add this to your `.bashrc` to activate the application permanently.
@@ -75,7 +75,7 @@ like ZSH or Fish, when using `pyautoenv`.
 To enable the application in fish-shell, source the fish script.
 
 ```fish
-source <path to pyauotenv>/pyautoenv.fish
+source <path to pyautoenv>/pyautoenv.fish
 ```
 
 Add this to your `config.fish` file to activate the application permanently.
@@ -90,7 +90,7 @@ Add this to your `config.fish` file to activate the application permanently.
 To enable the application in PowerShell, dot the `.ps1` file.
 
 ```pwsh
-. <path to pyauotenv>\PyAutoEnv.ps1
+. <path to pyautoenv>\PyAutoEnv.ps1
 ```
 
 Add this to your profile to activate the application permanently.
