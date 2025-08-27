@@ -98,7 +98,8 @@ def main(sys_args: List[str], stdout: TextIO) -> int:
         logger.debug("main(%s)", sys_args)
     args = parse_args(sys_args, stdout)
     if not os.path.isdir(args.directory):
-        logger.warning("path '%s' is not a directory", args.directory)
+        if __debug__:
+            logger.warning("path '%s' is not a directory", args.directory)
         return 1
     new_activator = discover_env(args)
     active_env_dir = active_environment()
@@ -473,6 +474,7 @@ def iter_candidate_activators(env_directory: str, args: Args) -> Iterator[str]:
         for script in ("activate.ps1", "Activate.ps1"):
             script_path = os.path.join(env_directory, bin_dir, script)
             yield script_path
+        return
     else:
         script = "activate"
     yield os.path.join(env_directory, bin_dir, script)
